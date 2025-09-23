@@ -1,81 +1,44 @@
-### WG Hub + Traefik: пошаговое руководство для новичков
+# WireGuard Hub + Traefik
 
-Это инструкция как запустить:
-- VPN-хаб WireGuard (wg-easy) на HOST_1 (Linux) в режиме host (UDP/51820)
-- Traefik как единый вход по HTTPS (80/443) для ваших локальных сервисов (бот, ML API и т.д.)
-- Ограничение доступа по IP для API и webhook через Traefik middleware
+Два проверенных сценария:
+- Mode A — внешний вход остаётся на tuna; Traefik используется только внутри VPN (10.8.0.1:443)
+- Mode B — внешний вход через Traefik (80/443) с Let’s Encrypt и IP‑ограничениями
 
-Поддержка двух сценариев запуска:
-- Очень простой «одним файлом» — `scripts/quick_setup.sh`
-- Раздельные compose-стеки — при необходимости
-
----
-
-#### 0) Скачивание репозитория
-Выберите любой вариант:
+## 0. Получение проекта
 ```bash
-# HTTPS (проще)
 git clone https://github.com/ustwan/WG_HOST.git
 cd WG_HOST
-
-# или SSH (если настроен ключ на GitHub)
-# git clone git@github.com:ustwan/WG_HOST.git
-# cd WG_HOST
 ```
 
-#### 1) Предпосылки
-- HOST_1: Linux сервер с Docker + Docker Compose (plugin), доступен `/dev/net/tun`
-- Открыт порт UDP/51820 извне к HOST_1 (для WireGuard) — у вас БЕЛЫЙ статичный IP и проброшен 51820/udp
-- Если хотите внешние HTTPS‑входы через Traefik (вместо tuna): домен указывает на HOST_1, порты 80/443 открыты
+## 1. Предпосылки
+- Linux, Docker, Docker Compose plugin
+- UDP/51820 открыт или проброшен на HOST_1
+- /dev/net/tun доступен
+- Для Mode B: домен (A‑запись → HOST_1), порты 80/443 открыты
 
-Проверка Docker:
+Быстрые проверки:
 ```bash
-docker --version
-docker compose version
-```
-
-Быстрая проверка порта 51820/udp:
-```bash
-# на HOST_1: убедитесь, что WireGuard слушает
+docker --version && docker compose version
 sudo ss -ulpn | grep 51820 || true
-# с внешнего хоста: индикативная проверка
-nmap -sU -p 51820 <ваш_публичный_IP>
-# попытка подключения тестовым клиентом — лучший способ (появится handshake в `sudo wg show`)
 ```
 
-WG_HOST — адрес, по которому клиенты WG подключаются к хабу:
-- Рекомендуется: ваш домен (динамический DNS тоже подойдёт)
-- Допустимо: ваш статичный публичный IP
-
----
-
-#### 2) Выберите режим
-- Режим A: Оставить tuna снаружи (внешний HTTPS), Traefik использовать ТОЛЬКО внутри VPN
-  - Запуск: `bash scripts/setup_host1.sh`
-  - Итог: внешка как была в tuna; VPN‑клиенты получают доступ к внутренним API через 10.8.0.1:443 (Traefik‑vpn)
-  - DOMAIN не нужен. Нужен только WG_HOST (публичный IP/домен для WG)
-
-- Режим B: Полностью Traefik снаружи (заменяет tuna), Let’s Encrypt, 80/443
-  - Запуск: `bash scripts/quick_setup.sh` (см. ниже)
-  - Итог: единый внешний вход на 80/443, TLS, IP‑whitelist на маршрутах
-
-Примечание: `quick_setup.sh` поднимает внешний Traefik на 80/443 и может конфликтовать с tuna. Если оставляете tuna, используйте режим A.
-
----
-
-#### 3A) Режим A — VPN‑вход (tuna остаётся снаружи)
+## 2. Выберите сценарий
+### Mode A — VPN‑вход; tuna снаружи без изменений
+- WG_HOST — публичный IP или домен для WG‑клиентов (Endpoint)
 ```bash
-# Только VPN‑хаб + внутренний Traefik на 10.8.0.1:443
-bash scripts/setup_host1.sh
+WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> bash scripts/install_mode_a.sh
 ```
+Что произойдёт:
+- Включится ip_forward
+- Поднимется wg‑easy в host‑режиме (UDP/51820, UI 51821/tcp)
+- Поднимется внутренний Traefik на 10.8.0.1:443 (для доступа из VPN)
+
 Проверка:
 ```bash
-sudo docker compose -f traefik/docker-compose.yml ps
-sudo docker ps | grep wg-easy
+docker ps | egrep "wg-easy|traefik"
 ```
-Подключите клиентов WG к `WG_HOST:51820`. Внутренние сервисы публикуйте в Traefik (entrypoint `vpn`) по PathPrefix, доступ из VPN по https://10.8.0.1/<path>.
 
-Пример лейблов для внутреннего сервиса:
+Публикация внутренних API (доступ только из VPN):
 ```yaml
 labels:
   - traefik.enable=true
@@ -83,49 +46,24 @@ labels:
   - traefik.http.routers.api_a.rule=PathPrefix(`/api-a`)
   - traefik.http.services.api_a.loadbalancer.server.port=8080
 ```
-Фаервол: разрешите 443/tcp только с интерфейса wg0 или подсети 10.8.0.0/24; UI wg-easy (51821/tcp) ограничьте для админ‑сетей/VPN.
+Доступ: https://10.8.0.1/api-a из любой WG‑машины.
 
----
-
-#### 3B) Режим B — быстрый запуск одним скриптом (Traefik снаружи)
-Скрипт включит ip_forward, создаст сеть, поднимет wg-easy и Traefik с TLS и whitelist’ами.
+### Mode B — внешний Traefik (80/443) с Let’s Encrypt
+- WG_HOST, DOMAIN, EMAIL, CIDR‑списки для IP‑ограничений
 ```bash
 WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> \
 DOMAIN=api.example.com \
 EMAIL=admin@example.com \
 API_ALLOW_CIDRS='["1.2.3.4/32","5.6.7.0/24"]' \
 WEBHOOK_ALLOW_CIDRS='["149.154.160.0/20","91.108.4.0/22"]' \
-bash scripts/quick_setup.sh
+bash scripts/install_mode_b.sh
 ```
-Проверка, что контейнеры работают:
-```bash
-docker ps
-```
-Должны быть: `wg-easy` и `traefik-vpn-external`.
+Что произойдёт:
+- Включится ip_forward, создастся сеть edge_net
+- Поднимется wg‑easy (UDP/51820)
+- Поднимется Traefik на 80/443, ACME HTTP‑01, dynamic middleware (`/opt/edge-proxy/dynamic/middlewares.yml`)
 
----
-
-#### 4) Создание пиров (клиентов) WireGuard
-Откройте UI wg-easy (порт 51821) с доверенной сети или через SSH‑туннель и создайте клиентов HOST_2, HOST_3...
-- Подсеть VPN: 10.8.0.0/24, сервер: 10.8.0.1
-- Клиентам назначайте 10.8.0.2/10.8.0.3 и т.д.
-
-Проверьте из клиента пинг до хаба:
-```bash
-ping 10.8.0.1
-```
-Handshake на сервере:
-```bash
-sudo docker exec -it wg-easy wg show || sudo wg show
-```
-
----
-
-#### 5) Подключение сервисов к Traefik
-- В режиме A: внутренние маршруты по `PathPrefix` доступны из VPN на 10.8.0.1:443
-- В режиме B: внешние маршруты по домену + пути, с TLS и IP‑whitelist
-
-Пример nn2 (порт 8002) для режима B:
+Публикация сервисов (пример nn2:8002):
 ```yaml
 labels:
   - traefik.enable=true
@@ -134,27 +72,33 @@ labels:
   - traefik.http.routers.nn2.tls.certresolver=le
   - traefik.http.routers.nn2.middlewares=api-allow@file
   - traefik.http.services.nn2.loadbalancer.server.port=8002
+networks:
+  edge_net:
+    external: true
 ```
 
----
+## 3. WireGuard: клиенты и проверка
+- Откройте UI wg‑easy (51821/tcp) из доверенной сети; создайте клиентов 10.8.0.2/10.8.0.3...
+- Handshake на сервере:
+```bash
+sudo docker exec -it wg-easy wg show || sudo wg show
+```
+- С клиента: `ping 10.8.0.1`
 
-#### 6) Фаервол (кратко)
-- UDP/51820 — извне к HOST_1 (у вас уже проброшен)
-- Режим A: ограничить TCP/443 только по wg0/10.8.0.0/24
-- Режим B: открыть TCP/80 и TCP/443 извне (для ACME и доступа)
-- UI wg-easy 51821/tcp — ограничить по IP/сетям админов
+## 4. Фаервол
+- UDP/51820 → HOST_1 (внешний)
+- Mode A: TCP/443 ограничить wg0/10.8.0.0/24
+- Mode B: TCP/80, TCP/443 открыть извне (ACME, доступ)
+- UI wg‑easy 51821/tcp — ограничить по IP/сетям админов
 
----
+## 5. Отладка
+```bash
+docker logs -f wg-easy
+docker logs -f traefik-vpn-external  # Mode B
+sudo tcpdump -ni any udp port 51820  # проверка входящего WG
+```
 
-#### 7) Частые проверки/проблемы
-- Если нет handshake: проверьте проброс 51820/udp и Endpoint в клиентском конфиге (`Endpoint = <WG_HOST>:51820`)
-- Для Telegram webhook используйте IPv4 whitelist: `149.154.160.0/20`, `91.108.4.0/22`
-- Если wg‑интерфейс не поднимается: убедитесь, что `/dev/net/tun` доступен и модуль wireguard загружен (`sudo modprobe wireguard`)
-
----
-
-#### 8) Альтернатива: раздельные compose (необязательно)
-- `wg-easy/docker-compose.yml` — поднимет только VPN хаб (host‑mode)
-- `traefik/docker-compose.yml` — внутренний Traefik (10.8.0.1:443)
-- `docker-compose.traefik.yml` — внешний Traefik (80/443, ACME)
-- `scripts/setup_host1.sh` — режим A; `scripts/quick_setup.sh` — режим B
+## 6. Примечания
+- WG_HOST может быть доменом с динамическим DNS или статичным IP
+- При CGNAT нужен VPS/relay для входящего 51820/udp
+- Для webhook Telegram используйте IPv4 whitelist: 149.154.160.0/20, 91.108.4.0/22
