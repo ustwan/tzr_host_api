@@ -25,17 +25,29 @@ sudo ss -ulpn | grep 51820 || true
 ## 2. Выберите сценарий
 ### Mode A — VPN‑вход; tuna снаружи без изменений
 - WG_HOST — публичный IP или домен для WG‑клиентов (Endpoint)
+- Флаги панели (необязательно):
+  - ENABLE_VPN_DASH=1 — открыть Dashboard Traefik на 10.8.0.1:9001 (только для VPN)
+  - ENABLE_LAN_DASH=1 LAN_HOST_IP=172.16.16.104 [LAN_DASH_PORT=9001] — открыть на ЛВС‑IP
+
+Команда:
 ```bash
-WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> bash scripts/install_mode_a.sh
+WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> \
+ENABLE_VPN_DASH=1 \
+# ENABLE_LAN_DASH=1 LAN_HOST_IP=172.16.16.104 LAN_DASH_PORT=9001 \
+bash scripts/install_mode_a.sh
 ```
 Что произойдёт:
 - Включится ip_forward
 - Поднимется wg‑easy в host‑режиме (UDP/51820, UI 51821/tcp)
-- Поднимется внутренний Traefik на 10.8.0.1:443 (для доступа из VPN)
+- Автоматически создастся сеть `apinet` (если требуется)
+- Поднимется внутренний Traefik на 10.8.0.1:443
+- При включении флагов — Dashboard на 10.8.0.1:9001 и/или 172.16.16.104:9001
 
 Проверка:
 ```bash
 docker ps | egrep "wg-easy|traefik"
+# При ENABLE_VPN_DASH=1:
+curl -I http://10.8.0.1:9001/dashboard/ | head -n1
 ```
 
 Публикация внутренних API (доступ только из VPN):
@@ -46,7 +58,7 @@ labels:
   - traefik.http.routers.api_a.rule=PathPrefix(`/api-a`)
   - traefik.http.services.api_a.loadbalancer.server.port=8080
 ```
-Доступ: https://10.8.0.1/api-a из любой WG‑машины.
+Доступ: https://10.8.0.1/api-a из WG‑машин.
 
 ### Mode B — внешний Traefik (80/443) с Let’s Encrypt
 - WG_HOST, DOMAIN, EMAIL, CIDR‑списки для IP‑ограничений
@@ -78,16 +90,14 @@ networks:
 ```
 
 ## 3. WireGuard: клиенты и проверка
-- Откройте UI wg‑easy (51821/tcp) из доверенной сети; создайте клиентов 10.8.0.2/10.8.0.3...
-- Handshake на сервере:
 ```bash
 sudo docker exec -it wg-easy wg show || sudo wg show
+ping 10.8.0.1
 ```
-- С клиента: `ping 10.8.0.1`
 
 ## 4. Фаервол
 - UDP/51820 → HOST_1 (внешний)
-- Mode A: TCP/443 ограничить wg0/10.8.0.0/24
+- Mode A: TCP/443 ограничить wg0/10.8.0.0/24; Dashboard порты 9001 открывать только для VPN/ЛВС
 - Mode B: TCP/80, TCP/443 открыть извне (ACME, доступ)
 - UI wg‑easy 51821/tcp — ограничить по IP/сетям админов
 
@@ -95,10 +105,10 @@ sudo docker exec -it wg-easy wg show || sudo wg show
 ```bash
 docker logs -f wg-easy
 docker logs -f traefik-vpn-external  # Mode B
-sudo tcpdump -ni any udp port 51820  # проверка входящего WG
+sudo tcpdump -ni any udp port 51820
 ```
 
 ## 6. Примечания
 - WG_HOST может быть доменом с динамическим DNS или статичным IP
 - При CGNAT нужен VPS/relay для входящего 51820/udp
-- Для webhook Telegram используйте IPv4 whitelist: 149.154.160.0/20, 91.108.4.0/22
+- Telegram webhook IPv4 whitelist: 149.154.160.0/20, 91.108.4.0/22
