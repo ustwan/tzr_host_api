@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   wg-hub:
     image: lscr.io/linuxserver/wireguard:latest

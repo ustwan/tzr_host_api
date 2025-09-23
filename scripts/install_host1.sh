@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install/upgrade WG hub on HOST_1
+# Install/upgrade WG hub on HOST_1 (Linux only)
 # - Copies compose and config template to /opt/wg-hub
 # - Generates server keys if missing
 # - Injects PrivateKey into wg0.conf
 # - Opens UDP/51820 via UFW if present
 # - Starts container
+
+OS_NAME="$(uname -s || echo unknown)"
+if [ "${OS_NAME}" = "Darwin" ]; then
+  echo "This installer targets Linux hosts only. Please run it on HOST_1 (Linux)." >&2
+  exit 1
+fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 TARGET_DIR="/opt/wg-hub"
@@ -31,9 +37,17 @@ if [ ! -f "${CONFIG_DIR}/wg0.conf" ]; then
   sudo install -m 600 "${WGCONF_SRC}" "${CONFIG_DIR}/wg0.conf"
 fi
 
-# Generate keys if missing
+# Generate keys if missing (host wg or Docker fallback)
 if [ ! -f "${CONFIG_DIR}/server.key" ]; then
-  ( cd "${CONFIG_DIR}" && umask 077 && sudo sh -c 'wg genkey | tee server.key | wg pubkey > server.pub' )
+  if command -v wg >/dev/null 2>&1; then
+    sudo sh -c "cd '${CONFIG_DIR}' && umask 077 && wg genkey | tee server.key | wg pubkey > server.pub"
+  else
+    echo "wg not found on host. Generating keys via WireGuard Docker image..."
+    sudo docker run --rm \
+      -v "${CONFIG_DIR}:/config" \
+      lscr.io/linuxserver/wireguard:latest \
+      bash -lc "cd /config && umask 077 && wg genkey | tee server.key | wg pubkey > server.pub"
+  fi
   echo "Generated server keypair in ${CONFIG_DIR}"
 fi
 sudo chmod 600 "${CONFIG_DIR}/server.key"
