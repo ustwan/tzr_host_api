@@ -2,17 +2,22 @@
 set -euo pipefail
 
 # Mode A: Keep tuna external; use Traefik only inside VPN (10.8.0.1:443)
-# Requirements: Linux, Docker, UDP/51820 open/forwarded to this host, /dev/net/tun available
 # Usage:
-#   WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> [ENABLE_VPN_DASH=1] [ENABLE_LAN_DASH=1 LAN_HOST_IP=172.16.16.104 LAN_DASH_PORT=9001] bash scripts/install_mode_a.sh
+#   set -a; source ./env.example || true; set +a   # copy to .env and edit in real use
+#   WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> [VPN_CIDR=10.8.0.0/24] \
+#   [ENABLE_VPN_DASH=1 VPN_DASH_PORT=9001] \
+#   [ENABLE_LAN_DASH=1 LAN_HOST_IP=<LAN_IP> LAN_DASH_PORT=9001] \
+#   bash scripts/install_mode_a.sh
 
 [ "$(uname -s)" = "Linux" ] || { echo "Run on Linux" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "Docker required" >&2; exit 1; }
 
 WG_HOST="${WG_HOST:-}"; [ -n "$WG_HOST" ] || { echo "Set WG_HOST (public IP/DNS for clients)" >&2; exit 1; }
+VPN_CIDR="${VPN_CIDR:-10.8.0.0/24}"
 ENABLE_VPN_DASH="${ENABLE_VPN_DASH:-0}"
+VPN_DASH_PORT="${VPN_DASH_PORT:-9001}"
 ENABLE_LAN_DASH="${ENABLE_LAN_DASH:-0}"
-LAN_HOST_IP="${LAN_HOST_IP:-}"      # e.g. 172.16.16.104
+LAN_HOST_IP="${LAN_HOST_IP:-}"
 LAN_DASH_PORT="${LAN_DASH_PORT:-9001}"
 
 # Enable forwarding
@@ -32,7 +37,7 @@ docker run -d \
   -e WG_HOST="$WG_HOST" \
   -e WG_PORT=51820 \
   -e WG_DEFAULT_DNS=1.1.1.1 \
-  -e WG_ALLOWED_IPS=10.8.0.0/24 \
+  -e WG_ALLOWED_IPS="$VPN_CIDR" \
   -e WG_PERSISTENT_KEEPALIVE=25 \
   -e WG_DEVICE=wg0 \
   -e WG_MTU=1420 \
@@ -53,7 +58,7 @@ mkdir -p traefik
 : > "$OVR"
 
 if [ "$ENABLE_VPN_DASH" = "1" ]; then
-cat >> "$OVR" <<'YAML'
+cat >> "$OVR" <<YAML
 services:
   traefik:
     command:
@@ -61,7 +66,7 @@ services:
       - --api.insecure=true
     ports:
       - target: 8080
-        published: 9001
+        published: ${VPN_DASH_PORT}
         protocol: tcp
         host_ip: 10.8.0.1
 YAML
@@ -94,4 +99,4 @@ fi
 # Status
 sleep 2
 docker ps --format 'table {{.Names}}\t{{.Status}}'
-echo "Mode A ready. Dashboard flags: VPN=${ENABLE_VPN_DASH}, LAN=${ENABLE_LAN_DASH}."
+echo "Mode A ready. VPN_CIDR=${VPN_CIDR} Dashboard: VPN=${ENABLE_VPN_DASH}:${VPN_DASH_PORT} LAN=${ENABLE_LAN_DASH}:${LAN_DASH_PORT}."

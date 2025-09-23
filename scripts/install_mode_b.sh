@@ -3,8 +3,10 @@ set -euo pipefail
 
 # Mode B: External Traefik on 80/443 (ACME), replace tuna
 # Usage:
+#   set -a; source ./env.example || true; set +a
 #   WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> DOMAIN=api.example.com EMAIL=admin@example.com \
 #   API_ALLOW_CIDRS='["1.2.3.4/32","5.6.7.0/24"]' WEBHOOK_ALLOW_CIDRS='["149.154.160.0/20","91.108.4.0/22"]' \
+#   [VPN_CIDR=10.8.0.0/24] \
 #   bash scripts/install_mode_b.sh
 
 [ "$(uname -s)" = "Linux" ] || { echo "Run on Linux" >&2; exit 1; }
@@ -15,6 +17,7 @@ DOMAIN="${DOMAIN:-}"; [ -n "$DOMAIN" ] || { echo "Set DOMAIN" >&2; exit 1; }
 EMAIL="${EMAIL:-}"; [ -n "$EMAIL" ] || { echo "Set EMAIL" >&2; exit 1; }
 API_ALLOW_CIDRS="${API_ALLOW_CIDRS:-[\"127.0.0.1/32\"]}"
 WEBHOOK_ALLOW_CIDRS="${WEBHOOK_ALLOW_CIDRS:-[\"149.154.160.0/20\",\"91.108.4.0/22\"]}"
+VPN_CIDR="${VPN_CIDR:-10.8.0.0/24}"
 
 # Enable forwarding
 echo "net.ipv4.ip_forward=1" | sudo tee /etc/sysctl.d/99-wg.conf >/dev/null
@@ -34,7 +37,7 @@ docker run -d \
   -e WG_HOST="$WG_HOST" \
   -e WG_PORT=51820 \
   -e WG_DEFAULT_DNS=1.1.1.1 \
-  -e WG_ALLOWED_IPS=10.8.0.0/24 \
+  -e WG_ALLOWED_IPS="$VPN_CIDR" \
   -e WG_PERSISTENT_KEEPALIVE=25 \
   -e WG_DEVICE=wg0 \
   -e WG_MTU=1420 \
@@ -83,4 +86,4 @@ docker run -d \
 
 sleep 2
 docker ps --format 'table {{.Names}}\t{{.Status}}'
-echo "Mode B: wg-easy up; Traefik on 80/443 with ACME. Attach services to edge_net with labels."
+echo "Mode B ready. VPN_CIDR=${VPN_CIDR}. Attach services to edge_net with labels."
