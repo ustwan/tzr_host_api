@@ -1,0 +1,26 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik-vpn
+    restart: unless-stopped
+    networks:
+      - apinet
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=apinet
+      - --entrypoints.vpn.address=:443
+      - --log.level=INFO
+      # TLS examples:
+      # - --serversTransport.insecureSkipVerify=true
+      # - --entrypoints.vpn.http.tls=true
+    ports:
+      - target: 443
+        published: 443
+        protocol: tcp
+        host_ip: 10.8.0.1
+networks:
+  apinet:
+    external: true
