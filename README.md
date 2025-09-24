@@ -2,17 +2,19 @@
 
 Каркас клиента, работающего внутри WireGuard VPN без TLS, с единой точкой доступа к БД (API_FATHER) и маршрутизацией через Traefik.
 
+Вариант WireGuard: используем клиентский `wg0.conf` в каталоге `wg_client/wg/` (см. `wg_client/wg/README_WG.md`). Переменные `WG_*` в `.env` не используются.
+
 ## Архитектура
 - Сети
   - `apinet` — внешняя docker-сеть (общая: Traefik + WG + доступ из VPN)
   - `backnet` — внутренняя сеть API_* ↔ API_FATHER (internal)
   - `dbnet` — внутренняя сеть API_FATHER ↔ DB (internal)
 - Сервисы
-  - `wg_vpn` — WireGuard-клиент; API_* работают в его net-namespace (`network_mode: service:wg_vpn`)
+  - `wg_vpn` — WireGuard‑клиент (linuxserver/wireguard), читает `wg_client/wg/wg0.conf`
   - `traefik` — маршрутизация и UI (доступ только из VPN), HTTP на `:80`
-  - `api_father` — единая точка к БД, плюс внутренний Redis
-  - `api_1`, `api_2`, `api_3` — бизнес-ручки (слушают 0.0.0.0 на портах 8081/8082/8083 внутри netns wg_vpn)
-  - `db` (MySQL 8.0.42) — только в режиме теста
+  - `api_father` — единая точка к БД, плюс Redis
+  - `worker` — фоновые задачи (читает Redis‑очередь)
+  - `api_1`… — бизнес‑ручки
 
 Ключевое: у API_* нет собственных IP; Traefik проксирует на `http://wg_vpn:<порт>` (файловый провайдер `traefik/dynamic/apis.yml`).
 
@@ -355,3 +357,9 @@ http:
 
 - Внешний маршрут для постановки задач (по желанию)
   По умолчанию `enqueue` — внутренний эндпоинт. Если нужен внешний HTTP‑маршрут через Traefik (доступ из VPN), добавьте в `api_1` проксирующий эндпоинт, который отправляет JSON на `http://api_father:9000/internal/queue/enqueue`, и создайте для него PathPrefix‑роут в `traefik/dynamic/apis.yml`.
+
+### Быстрые подсказки
+- Файл WG: положите `wg_client/wg/wg0.conf` (пример в `wg_client/wg/README_WG.md`).
+- Привязка Traefik:
+  - На macOS/локально: `TRAEFIK_BIND_IP=127.0.0.1` или уберите `host_ip` (оставьте `"80:80"`).
+  - На Linux (если wg0 на ХОСТЕ): можно `TRAEFIK_BIND_IP=<IP wg0>` или `0.0.0.0` с ограничением фаерволом.
