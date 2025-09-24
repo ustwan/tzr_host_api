@@ -1,8 +1,15 @@
 from fastapi import FastAPI, HTTPException
 import os
 import pymysql
+import redis
+import json
+from typing import Optional
 
 app = FastAPI(title="API_FATHER")
+
+redis_client: Optional[redis.Redis] = None
+QUEUE_REQUESTS = os.getenv("QUEUE_REQUESTS", "queue:requests")
+QUEUE_EVENTS = os.getenv("QUEUE_EVENTS", "queue:events")
 
 
 def get_dsn_and_db():
@@ -23,9 +30,31 @@ def get_dsn_and_db():
     return dsn, name
 
 
+@app.on_event("startup")
+def init_redis():
+    global redis_client
+    url = os.getenv("REDIS_URL", "redis://api_father_redis:6379/0")
+    try:
+        redis_client = redis.from_url(url)
+        # ленивое создание «очередей»: просто убедимся, что ключи доступны (например, добавим пустую очистку)
+        # Ничего не делаем, если очереди уже существуют
+        redis_client.ping()
+    except Exception as e:
+        # не валим сервис, но фиксируем ошибку подключения
+        redis_client = None
+        print(f"[startup] Redis init failed: {e}")
+
+
 @app.get("/internal/health")
 def health():
-    return {"status": "ok"}
+    ok = True
+    details = {"redis": False}
+    try:
+        if redis_client is not None and redis_client.ping():
+            details["redis"] = True
+    except Exception:
+        ok = False
+    return {"status": "ok" if ok else "degraded", "details": details}
 
 
 @app.get("/internal/constants")
@@ -47,3 +76,15 @@ def constants():
 
     data = {row["Name"]: {"value": float(row["Value"]), "description": row["Description"]} for row in rows}
     return data
+
+
+@app.post("/internal/queue/enqueue")
+def enqueue(item: dict):
+    if redis_client is None:
+        raise HTTPException(status_code=503, detail="Redis unavailable")
+    try:
+        qname = item.pop("queue", QUEUE_REQUESTS)
+        redis_client.rpush(qname, json.dumps(item, ensure_ascii=False))
+        return {"queued": True, "queue": qname}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -299,3 +299,59 @@ http:
         servers:
           - url: "http://wg_vpn:8084"
 ```
+
+## Очереди (Redis) и воркер
+В проекте реализованы очереди на Redis и отдельный воркер для фоновой обработки задач.
+
+- Где настраивается
+  - Переменные в `wg_client/env.example`:
+    - `REDIS_URL=redis://api_father_redis:6379/0`
+    - `QUEUE_REQUESTS=queue:requests`
+    - `QUEUE_EVENTS=queue:events`
+  - Сервисы в `wg_client/compose.base.yml`:
+    - `api_father_redis` — Redis (в сети `backnet`)
+    - `api_father` — инициализирует Redis на старте, предоставляет HTTP‑эндпоинты
+    - `worker` — отдельный контейнер, читает `QUEUE_REQUESTS` (блокирующим `BRPOP`) и обрабатывает задания
+
+- HTTP‑эндпоинты API_FATHER (внутренние):
+  - `GET /internal/health` — статус сервиса и доступности Redis
+  - `GET /internal/constants` — чтение `tzserver.constants` (ORDER BY Value ASC)
+  - `POST /internal/queue/enqueue` — поставить задачу в очередь
+    - Тело запроса — произвольный JSON; опционально можно указать `queue` (по умолчанию `QUEUE_REQUESTS`)
+    - Пример:
+      ```bash
+      curl -s -X POST http://api_father:9000/internal/queue/enqueue \
+        -H 'Content-Type: application/json' \
+        -d '{"task":"recalc","data":{"foo":"bar"}}'
+      ```
+    - Ответ: `{ "queued": true, "queue": "queue:requests" }`
+
+- Воркер
+  - Код: `wg_client/worker/app/main.py`
+  - Настройки: `REDIS_URL`, `QUEUE_REQUESTS`
+  - Цикл: `BRPOP(QUEUE_REQUESTS)` → парсинг JSON → обработка (место для вашей логики)
+  - Логи воркера:
+    ```bash
+    docker compose -f wg_client/compose.base.yml logs -f worker
+    ```
+
+- Запуск с очередями (test‑режим с БД)
+  ```bash
+  cd wg_client
+  bash tools/ctl.sh up-testdb
+  # поднимет traefik, wg_vpn, api_father, api_father_redis, worker, api_1 и test‑DB
+  ```
+
+- Проверка очереди
+  ```bash
+  # поставить элемент в очередь (внутренний эндпоинт)
+  curl -s -X POST http://api_father:9000/internal/queue/enqueue \
+    -H 'Content-Type: application/json' \
+    -d '{"task":"recalc","data":{"foo":"bar"}}'
+
+  # посмотреть, что воркер получил
+  docker compose -f wg_client/compose.base.yml logs -f worker
+  ```
+
+- Внешний маршрут для постановки задач (по желанию)
+  По умолчанию `enqueue` — внутренний эндпоинт. Если нужен внешний HTTP‑маршрут через Traefik (доступ из VPN), добавьте в `api_1` проксирующий эндпоинт, который отправляет JSON на `http://api_father:9000/internal/queue/enqueue`, и создайте для него PathPrefix‑роут в `traefik/dynamic/apis.yml`.

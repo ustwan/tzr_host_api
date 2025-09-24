@@ -28,13 +28,16 @@ services:
       - TZ=${TZ}
 
   wg_vpn:
-    image: ghcr.io/wg-easy/wg-easy:latest
+    image: lscr.io/linuxserver/wireguard
     cap_add: [ NET_ADMIN ]
-    sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
+    devices:
+      - /dev/net/tun
+    volumes:
+      - ./wg:/config   # внутри должен быть wg0.conf
     environment:
-      - WG_ALLOWED_IPS=${WG_ALLOWED_IPS}
-      - WG_PERSISTENT_KEEPALIVE=${WG_KEEPALIVE}
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
     networks: [ apinet, backnet ]
 
   api_father:
@@ -44,6 +47,8 @@ services:
     environment:
       - TZ=${TZ}
       - REDIS_URL=${REDIS_URL}
+      - QUEUE_REQUESTS=${QUEUE_REQUESTS}
+      - QUEUE_EVENTS=${QUEUE_EVENTS}
       - DB_MODE=${DB_MODE}
       - DB_TEST_HOST=${DB_TEST_HOST}
       - DB_TEST_PORT=${DB_TEST_PORT}
@@ -59,3 +64,11 @@ services:
   api_father_redis:
     image: redis:7
     networks: [ backnet ]
+
+  worker:
+    build: ./worker
+    depends_on: [ api_father_redis ]
+    networks: [ backnet ]
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - QUEUE_REQUESTS=${QUEUE_REQUESTS}

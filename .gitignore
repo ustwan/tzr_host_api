@@ -6,6 +6,7 @@
 *.der
 *.csr
 /opt/wg-easy/*.key
+wg_client/wg/*
 
 # Env files
 .env
