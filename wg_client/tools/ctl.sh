@@ -8,7 +8,7 @@ case "$cmd" in
     ;;
   up-testdb)
     shift
-    docker compose -f compose.base.yml -f compose.apis.yml -f compose.db.test.yml --profile testdb "$@" up -d
+    docker compose -f compose.base.yml -f compose.apis.yml -f compose.db.test.yml "$@" up -d
     ;;
   down)
     docker compose -f compose.base.yml -f compose.apis.yml down
@@ -35,6 +35,6 @@ case "$cmd" in
       -user="${DB_PROD_USER}" -password="${DB_PROD_PASSWORD}" migrate
     ;;
   *)
-    echo "usage: $0 {up|up-testdb|down|down-all|restart-api1|restart-api2|restart-api3|logs|migrate-prod}"
+    echo "usage: $0 {up|up-testdb|down|down-all|restart-api1|restart-api2|restart-api3|logs|migrate-prod}" >&2
     exit 1
 esac
