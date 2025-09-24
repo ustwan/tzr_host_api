@@ -108,3 +108,42 @@ networks:
     external: true
 ```
 Проверка: `curl -I https://$DOMAIN/score2/healthz` (доступ только из `API_ALLOW_CIDRS`).
+
+## Перезапуск контейнеров
+
+wg-easy (host-mode):
+```bash
+docker restart wg-easy
+```
+
+Traefik (внутренний, Mode A):
+```bash
+# без override
+docker compose -f traefik/docker-compose.yml restart
+# с override (если включали панель)
+docker compose -f traefik/docker-compose.yml -f traefik/docker-compose.override.yml restart
+```
+
+Traefik (внешний, Mode B):
+```bash
+docker compose -f docker-compose.traefik.yml --project-name ${PROJECT_NAME_TRAEFIK:-proxy} restart
+```
+
+Полное пересоздание (применить изменения конфигов):
+```bash
+# внутренний Traefik
+docker compose -f traefik/docker-compose.yml up -d
+# с override
+docker compose -f traefik/docker-compose.yml -f traefik/docker-compose.override.yml up -d
+# внешний Traefik
+docker compose -f docker-compose.traefik.yml --project-name ${PROJECT_NAME_TRAEFIK:-proxy} up -d
+```
+
+Логи для отладки:
+```bash
+docker logs -f wg-easy
+# внутренний Traefik
+docker logs -f traefik
+# внешний Traefik
+docker logs -f traefik-vpn-external
+```

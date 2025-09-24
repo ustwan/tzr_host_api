@@ -3,14 +3,22 @@ set -euo pipefail
 
 # Mode A: Keep tuna external; use Traefik only inside VPN (10.8.0.1:443)
 # Usage:
-#   set -a; source ./env.example || true; set +a   # copy to .env and edit in real use
-#   WG_HOST=<PUBLIC_IP_OR_DNS_OF_HOST1> [VPN_CIDR=10.8.0.0/24] \
-#   [ENABLE_VPN_DASH=1 VPN_DASH_PORT=9001] \
-#   [ENABLE_LAN_DASH=1 LAN_HOST_IP=<LAN_IP> LAN_DASH_PORT=9001] \
+#   (optional) cp env.example .env && edit .env
 #   bash scripts/install_mode_a.sh
+# The script will auto-load .env from repo root.
 
 [ "$(uname -s)" = "Linux" ] || { echo "Run on Linux" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "Docker required" >&2; exit 1; }
+
+# Repo root and env autoload
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
+if [ -f "${ENV_FILE}" ]; then
+  set -a; # export all sourced vars
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+  set +a;
+fi
 
 WG_HOST="${WG_HOST:-}"; [ -n "$WG_HOST" ] || { echo "Set WG_HOST (public IP/DNS for clients)" >&2; exit 1; }
 VPN_CIDR="${VPN_CIDR:-10.8.0.0/24}"
@@ -52,46 +60,45 @@ docker run -d \
 # Ensure external networks for Traefik if defined
 docker network inspect apinet >/dev/null 2>&1 || docker network create apinet
 
-# Build override for dashboard exposure
-OVR="traefik/docker-compose.override.yml"
-mkdir -p traefik
+# Build override for dashboard exposure (single services block)
+OVR="${REPO_ROOT}/traefik/docker-compose.override.yml"
+mkdir -p "${REPO_ROOT}/traefik"
 : > "$OVR"
 
-if [ "$ENABLE_VPN_DASH" = "1" ]; then
-cat >> "$OVR" <<YAML
-services:
-  traefik:
-    command:
-      - --api.dashboard=true
-      - --api.insecure=true
-    ports:
+if [ "$ENABLE_VPN_DASH" = "1" ] || [ "$ENABLE_LAN_DASH" = "1" ]; then
+  {
+    echo "services:"
+    echo "  traefik:"
+    echo "    command:"
+    echo "      - --api.dashboard=true"
+    echo "      - --api.insecure=true"
+    echo "    ports:"
+  } >> "$OVR"
+
+  if [ "$ENABLE_VPN_DASH" = "1" ]; then
+    cat >> "$OVR" <<YAML
       - target: 8080
         published: ${VPN_DASH_PORT}
         protocol: tcp
         host_ip: 10.8.0.1
 YAML
-fi
+  fi
 
-if [ "$ENABLE_LAN_DASH" = "1" ]; then
-  [ -n "$LAN_HOST_IP" ] || { echo "Set LAN_HOST_IP for LAN dashboard" >&2; exit 1; }
-cat >> "$OVR" <<YAML
-services:
-  traefik:
-    command:
-      - --api.dashboard=true
-      - --api.insecure=true
-    ports:
+  if [ "$ENABLE_LAN_DASH" = "1" ]; then
+    [ -n "$LAN_HOST_IP" ] || { echo "Set LAN_HOST_IP for LAN dashboard" >&2; exit 1; }
+    cat >> "$OVR" <<YAML
       - target: 8080
         published: ${LAN_DASH_PORT}
         protocol: tcp
         host_ip: ${LAN_HOST_IP}
 YAML
+  fi
 fi
 
 # Internal Traefik bound to 10.8.0.1:443
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)/traefik"
-if [ -s "../traefik/docker-compose.override.yml" ]; then
-  sudo docker compose -f docker-compose.yml -f ../traefik/docker-compose.override.yml up -d
+cd "${REPO_ROOT}/traefik"
+if [ -s "${OVR}" ]; then
+  sudo docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
 else
   sudo docker compose -f docker-compose.yml up -d
 fi

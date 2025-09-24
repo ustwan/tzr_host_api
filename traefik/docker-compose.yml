@@ -10,6 +10,7 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=apinet
       - --entrypoints.vpn.address=:443
       - --log.level=INFO
       # TLS examples:
