@@ -1,8 +1,0 @@
-http:
-  middlewares:
-    api-allow:
-      ipWhiteList:
-        sourceRange: ${API_ALLOW_CIDRS}
-    webhook-allow:
-      ipWhiteList:
-        sourceRange: ${WEBHOOK_ALLOW_CIDRS}

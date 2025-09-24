@@ -1,0 +1,61 @@
+name: ${PROJECT_NAME}
+
+networks:
+  apinet: {}
+  backnet:
+    internal: true
+  dbnet:
+    internal: true
+
+services:
+  traefik:
+    image: traefik:v3.1
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--providers.docker=false"
+      - "--entrypoints.vpn.address=:80"
+      - "--log.level=${TRAEFIK_LOG_LEVEL}"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+    networks: [ apinet ]
+    ports:
+      - "${TRAEFIK_BIND_IP}:80:80"
+    environment:
+      - TZ=${TZ}
+
+  wg_vpn:
+    image: ghcr.io/wg-easy/wg-easy:latest
+    cap_add: [ NET_ADMIN ]
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    environment:
+      - WG_ALLOWED_IPS=${WG_ALLOWED_IPS}
+      - WG_PERSISTENT_KEEPALIVE=${WG_KEEPALIVE}
+    networks: [ apinet, backnet ]
+
+  api_father:
+    build: ./api_father
+    depends_on: [ wg_vpn ]
+    networks: [ backnet, dbnet ]
+    environment:
+      - TZ=${TZ}
+      - REDIS_URL=${REDIS_URL}
+      - DB_MODE=${DB_MODE}
+      - DB_TEST_HOST=${DB_TEST_HOST}
+      - DB_TEST_PORT=${DB_TEST_PORT}
+      - DB_TEST_NAME=${DB_TEST_NAME}
+      - DB_TEST_USER=${DB_TEST_USER}
+      - DB_TEST_PASSWORD=${DB_TEST_PASSWORD}
+      - DB_PROD_HOST=${DB_PROD_HOST}
+      - DB_PROD_PORT=${DB_PROD_PORT}
+      - DB_PROD_NAME=${DB_PROD_NAME}
+      - DB_PROD_USER=${DB_PROD_USER}
+      - DB_PROD_PASSWORD=${DB_PROD_PASSWORD}
+
+  api_father_redis:
+    image: redis:7
+    networks: [ backnet ]

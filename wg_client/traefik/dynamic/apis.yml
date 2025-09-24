@@ -1,0 +1,42 @@
+http:
+  routers:
+    api1:
+      rule: "PathPrefix(`/api/registration`)"
+      entryPoints: [ "vpn" ]
+      service: api1_svc
+
+    api2:
+      rule: "PathPrefix(`/api/bonus`)"
+      entryPoints: [ "vpn" ]
+      service: api2_svc
+
+    api3:
+      rule: "PathPrefix(`/api/info`)"
+      entryPoints: [ "vpn" ]
+      service: api3_svc
+
+    dashboard:
+      rule: "PathPrefix(`/dashboard`) || PathPrefix(`/api`)"
+      entryPoints: [ "vpn" ]
+      service: "api@internal"
+      middlewares: [ "dash-auth" ]
+
+  services:
+    api1_svc:
+      loadBalancer:
+        servers:
+          - url: "http://wg_vpn:${API1_PORT}"
+    api2_svc:
+      loadBalancer:
+        servers:
+          - url: "http://wg_vpn:${API2_PORT}"
+    api3_svc:
+      loadBalancer:
+        servers:
+          - url: "http://wg_vpn:${API3_PORT}"
+
+  middlewares:
+    dash-auth:
+      basicAuth:
+        users:
+          - "${TRAEFIK_DASHBOARD_USER}:${TRAEFIK_DASHBOARD_PASS}"
