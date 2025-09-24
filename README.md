@@ -10,7 +10,22 @@ git clone https://github.com/ustwan/WG_HOST.git
 cd WG_HOST
 ```
 
-## 1. Предпосылки
+## 1. Общая сеть apinet
+`apinet` — внешняя docker‑сеть (bridge) для связи Traefik и ваших сервисов из других стеков.
+- Создать один раз:
+```bash
+docker network create apinet
+```
+- Traefik (внутренний Mode A) должен быть в `apinet` и запущен с `--providers.docker.network=apinet`.
+- Любой сервис, который должен быть виден Traefik, подключайте к `apinet` и добавляйте traefik‑лейблы.
+- Пример в compose сервисов:
+```yaml
+networks:
+  apinet:
+    external: true
+```
+
+## 2. Предпосылки
 - Linux, Docker, Docker Compose plugin
 - UDP/51820 открыт или проброшен на HOST_1
 - /dev/net/tun доступен
@@ -22,7 +37,7 @@ docker --version && docker compose version
 sudo ss -ulpn | grep 51820 || true
 ```
 
-## 2. Переменные окружения
+## 3. Переменные окружения
 Скопируйте `env.example` → `.env` и отредактируйте под себя. Пример подключения:
 ```bash
 cp env.example .env
@@ -35,7 +50,7 @@ set -a; source ./.env; set +a
 - `ENABLE_LAN_DASH`, `LAN_HOST_IP`, `LAN_DASH_PORT` — открыть панель Traefik на LAN‑IP:PORT
 - (Mode B) `DOMAIN`, `EMAIL`, `API_ALLOW_CIDRS`, `WEBHOOK_ALLOW_CIDRS`
 
-## 3. Выберите сценарий
+## 4. Выберите сценарий
 ### Mode A — VPN‑вход; tuna снаружи (HTTP внутри VPN)
 ```bash
 set -a; source ./.env; set +a
@@ -66,17 +81,17 @@ bash scripts/install_mode_b.sh
 - Включится ip_forward, создастся `edge_net`
 - Поднимется wg‑easy (UDP/51820) и Traefik на 80/443 с ACME
 
-## 4. WireGuard: клиенты и проверка
+## 5. WireGuard: клиенты и проверка
 ```bash
 sudo docker exec -it wg-easy wg show || sudo wg show
 ping 10.8.0.1
 ```
 
-## 5. Публикация сервисов
+## 6. Публикация сервисов
 - Mode A: внутренние маршруты по PathPrefix, доступны из VPN на http://10.8.0.1:8081
 - Mode B: внешние маршруты по домену + пути, TLS и whitelist
 
-## 6. Фаервол и отладка
+## 7. Фаервол и отладка
 - UDP/51820 извне
 - Mode A: TCP/8081 разрешить только для wg0/10.8.0.0/24; Dashboard порт 9001 открывать только для VPN/ЛВС
 - Mode B: TCP/80/443 открыть извне (ACME, доступ)
