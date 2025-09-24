@@ -1,0 +1,8 @@
+services:
+  api_1:
+    build: ./api_1
+    network_mode: "service:wg_vpn"
+    depends_on: [ wg_vpn, api_father ]
+    environment:
+      - TZ=${TZ}
+      - API_FATHER_URL=http://api_father:9000

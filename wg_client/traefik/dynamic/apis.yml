@@ -1,9 +1,10 @@
 http:
   routers:
     api1:
-      rule: "PathPrefix(`/api/registration`)"
+      rule: "PathPrefix(`/api/server`)"
       entryPoints: [ "vpn" ]
       service: api1_svc
+      middlewares: [ "api1-strip" ]
     api2:
       rule: "PathPrefix(`/api/bonus`)"
       entryPoints: [ "vpn" ]
@@ -21,7 +22,7 @@ http:
     api1_svc:
       loadBalancer:
         servers:
-          - url: "http://wg_vpn:${API1_PORT}"
+          - url: "http://wg_vpn:8081"
     api2_svc:
       loadBalancer:
         servers:
@@ -31,6 +32,9 @@ http:
         servers:
           - url: "http://wg_vpn:${API3_PORT}"
   middlewares:
+    api1-strip:
+      stripPrefix:
+        prefixes: [ "/api/server" ]
     dash-auth:
       basicAuth:
         users:
