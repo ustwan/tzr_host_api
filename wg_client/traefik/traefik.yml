@@ -1,0 +1,11 @@
+api:
+  dashboard: true
+
+accessLog: {}
+log:
+  level: ${TRAEFIK_LOG_LEVEL}
+
+entryPoints:
+  vpn:
+    address: ":80"
+

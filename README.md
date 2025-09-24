@@ -1,177 +1,140 @@
-# WireGuard Hub + Traefik
+# WG_CLIENT
 
-Два проверенных сценария:
-- Mode A — внешний вход остаётся на tuna; Traefik используется только внутри VPN (HTTP без TLS на 10.8.0.1:8081)
-- Mode B — внешний вход через Traefik (80/443) с Let’s Encrypt и IP‑ограничениями
+Каркас клиента, работающего внутри WireGuard VPN без TLS, с единой точкой доступа к БД (API_FATHER) и маршрутизацией через Traefik.
 
-## 0. Получение проекта
-```bash
-git clone https://github.com/ustwan/WG_HOST.git
-cd WG_HOST
-```
+## Архитектура
+- Сети
+  - `apinet` — внешняя docker-сеть (общая: Traefik + WG + доступ из VPN)
+  - `backnet` — внутренняя сеть API_* ↔ API_FATHER (internal)
+  - `dbnet` — внутренняя сеть API_FATHER ↔ DB (internal)
+- Сервисы
+  - `wg_vpn` — WireGuard-клиент; API_* работают в его net-namespace (`network_mode: service:wg_vpn`)
+  - `traefik` — маршрутизация и UI (доступ только из VPN), HTTP на `:80`
+  - `api_father` — единая точка к БД, плюс внутренний Redis
+  - `api_1`, `api_2`, `api_3` — бизнес-ручки (слушают 0.0.0.0 на портах 8081/8082/8083 внутри netns wg_vpn)
+  - `db` (MySQL 8.0.42) — только в режиме теста
 
-## 1. Общая сеть apinet
-`apinet` — внешняя docker‑сеть (bridge) для связи Traefik и ваших сервисов из других стеков.
-- Создать один раз:
+Ключевое: у API_* нет собственных IP; Traefik проксирует на `http://wg_vpn:<порт>` (файловый провайдер `traefik/dynamic/apis.yml`).
+
+## Предварительно
+- Linux, Docker, Docker Compose
+- WG-клиент/конфиг для `wg_vpn` (ключи/параметры в `.env`)
+- Создайте сеть один раз:
 ```bash
 docker network create apinet
 ```
-- Traefik (внутренний Mode A) должен быть в `apinet` и запущен с `--providers.docker.network=apinet`.
-- Любой сервис, который должен быть виден Traefik, подключайте к `apinet` и добавляйте traefik‑лейблы.
-- Пример в compose сервисов:
-```yaml
-networks:
-  apinet:
-    external: true
-```
 
-## 2. Предпосылки
-- Linux, Docker, Docker Compose plugin
-- UDP/51820 открыт или проброшен на HOST_1
-- /dev/net/tun доступен
-- Для Mode B: домен (A‑запись → HOST_1), порты 80/443 открыты
-
-Быстрые проверки:
+## Быстрый старт
+1) Клонирование и окружение
 ```bash
-docker --version && docker compose version
-sudo ss -ulpn | grep 51820 || true
-```
-
-## 3. Переменные окружения
-Скопируйте `env.example` → `.env` и отредактируйте под себя. Пример подключения:
-```bash
+git clone https://github.com/ustwan/WG_CLIENT.git
+cd WG_CLIENT/wg_client
 cp env.example .env
-set -a; source ./.env; set +a
+nano .env
 ```
-Ключевые переменные:
-- `WG_HOST` — публичный IP/домен для клиентов WG
-- `VPN_CIDR` — подсеть VPN (по умолчанию 10.8.0.0/24)
-- `ENABLE_VPN_DASH`, `VPN_DASH_PORT` — открыть панель Traefik на 10.8.0.1:PORT
-- `ENABLE_LAN_DASH`, `LAN_HOST_IP`, `LAN_DASH_PORT` — открыть панель Traefik на LAN‑IP:PORT
-- (Mode B) `DOMAIN`, `EMAIL`, `API_ALLOW_CIDRS`, `WEBHOOK_ALLOW_CIDRS`
 
-## 4. Выберите сценарий
-### Mode A — VPN‑вход; tuna снаружи (HTTP внутри VPN)
+2) Поднять без тестовой БД (DB_MODE=prod — подключение к боевой MySQL в ЛАН):
 ```bash
-set -a; source ./.env; set +a
-bash scripts/install_mode_a.sh
+bash tools/ctl.sh up
 ```
-Что произойдёт:
-- Включится ip_forward, создастся сеть `apinet` при необходимости
-- Поднимется wg‑easy (UDP/51820)
-- Поднимется Traefik с entrypoint `vpn` на 10.8.0.1:8081 (HTTP, без TLS внутри VPN)
-- При включенных флагах — Dashboard на 10.8.0.1:${VPN_DASH_PORT} и/или ${LAN_HOST_IP}:${LAN_DASH_PORT}
 
-Публикация внутренних API (доступ только из VPN):
+3) Поднять с тестовой БД (DB_MODE=test, авто-миграции если `MIGRATE_ON_START_TEST=1`):
+```bash
+bash tools/ctl.sh up-testdb
+```
+
+4) Доступы (внутри VPN)
+- Traefik UI: `http://<WG_IP_CLIENTA>:80/dashboard` (basic auth из `.env`)
+- Пример роутов (см. `traefik/dynamic/apis.yml`):
+  - `GET http://<WG_IP_CLIENTA>/api/registration/health`
+  - `GET http://<WG_IP_CLIENTA>/api/bonus/health`
+  - `GET http://<WG_IP_CLIENTA>/api/info/health`
+
+## Переключатель БД
+- В `.env`: `DB_MODE=test|prod`
+  - `test` — MySQL в контейнере (`compose.db.test.yml`), миграции могут применяться автоматически
+  - `prod` — БД в вашей ЛАН; креды храните в `.env.secrets` (не коммитить)
+- `api_father` сам выбирает DSN по `DB_MODE`
+
+## Миграции
+- Скрипты: `wg_client/db/migrations` (под Flyway)
+- Тест (авто при старте, если включено): профиль `up-testdb`
+- Продакшн (ручной запуск):
+```bash
+bash tools/ctl.sh migrate-prod
+```
+
+## Traefik (file provider)
+- Статика: `traefik/traefik.yml` (entrypoint `vpn: :80`, dashboard включён)
+- Динамика: `traefik/dynamic/apis.yml`
+  - Пример:
 ```yaml
-labels:
-  - "traefik.enable=true"
-  - "traefik.http.routers.api_a.entrypoints=vpn"
-  - "traefik.http.routers.api_a.rule=PathPrefix(`/api-a`)"
-  - "traefik.http.services.api_a.loadbalancer.server.port=8080"
-```
-Доступ: http://10.8.0.1:8081/api-a из WG‑машин.
-
-### Mode B — внешний Traefik (80/443) с Let’s Encrypt
-```bash
-set -a; source ./.env; set +a
-bash scripts/install_mode_b.sh
-```
-Что произойдёт:
-- Включится ip_forward, создастся `edge_net`
-- Поднимется wg‑easy (UDP/51820) и Traefik на 80/443 с ACME
-
-## 5. WireGuard: клиенты и проверка
-```bash
-sudo docker exec -it wg-easy wg show || sudo wg show
-ping 10.8.0.1
+http:
+  routers:
+    api1:
+      rule: "PathPrefix(`/api/registration`)"
+      entryPoints: [ "vpn" ]
+      service: api1_svc
+  services:
+    api1_svc:
+      loadBalancer:
+        servers:
+          - url: "http://wg_vpn:${API1_PORT}"
 ```
 
-## 6. Публикация сервисов
-- Mode A: внутренние маршруты по PathPrefix, доступны из VPN на http://10.8.0.1:8081
-- Mode B: внешние маршруты по домену + пути, TLS и whitelist
-
-## 7. Фаервол и отладка
-- UDP/51820 извне
-- Mode A: TCP/8081 разрешить только для wg0/10.8.0.0/24; Dashboard порт 9001 открывать только для VPN/ЛВС
-- Mode B: TCP/80/443 открыть извне (ACME, доступ)
-- Логи: `docker logs -f wg-easy`, `docker logs -f traefik-vpn-external`
-
-## Пример: добавить tzr-moder-nn2-1 в Traefik
-
-Контейнер `tzr-moder-nn2-1` слушает внутри на 8002. Публикация через Traefik не требует проброса 8602 наружу — важен внутренний порт сервиса.
-
-- Mode A (только из VPN, вход 10.8.0.1:8081):
+## Добавить новый API
+1) Создайте `api_4` (Dockerfile + код), слушайте `0.0.0.0:8084` внутри
+2) В `compose.apis.yml` добавлять не требуется (работа в netns `wg_vpn` общая) — при необходимости добавьте build-секцию
+3) В `traefik/dynamic/apis.yml` добавьте `router` и `service`:
 ```yaml
-services:
-  tzr-moder-nn2:
-    image: tzr-moder-nn2
-    networks: [apinet]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nn2.entrypoints=vpn"
-      - "traefik.http.routers.nn2.rule=PathPrefix(`/score2`)"
-      - "traefik.http.services.nn2.loadbalancer.server.port=8002"
-networks:
-  apinet:
-    external: true
+  routers:
+    api4:
+      rule: "PathPrefix(`/api/new`)"
+      entryPoints: [ "vpn" ]
+      service: api4_svc
+  services:
+    api4_svc:
+      loadBalancer:
+        servers:
+          - url: "http://wg_vpn:8084"
 ```
-Доступ из VPN: http://10.8.0.1:8081/score2
-
-- Mode B (внешний доступ по домену с TLS):
-```yaml
-services:
-  tzr-moder-nn2:
-    image: tzr-moder-nn2
-    networks: [edge_net]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nn2.rule=Host(`$DOMAIN`) && PathPrefix(`/score2`)"
-      - "traefik.http.routers.nn2.entrypoints=websecure"
-      - "traefik.http.routers.nn2.tls.certresolver=le"
-      - "traefik.http.routers.nn2.middlewares=api-allow@file"
-      - "traefik.http.services.nn2.loadbalancer.server.port=8002"
-networks:
-  edge_net:
-    external: true
-```
-Проверка: `curl -I https://$DOMAIN/score2/healthz` (доступ только из `API_ALLOW_CIDRS`).
-
-## Перезапуск контейнеров
-
-wg-easy (host-mode):
+4) Перезапуск Traefik:
 ```bash
-docker restart wg-easy
+docker compose -f compose.base.yml up -d traefik
 ```
 
-Traefik (внутренний, Mode A):
+## Утилиты
 ```bash
-# без override
-docker compose -f traefik/docker-compose.yml restart
-# с override (если включали панель)
-docker compose -f traefik/docker-compose.yml -f traefik/docker-compose.override.yml restart
+bash tools/ctl.sh up           # traefik + wg_vpn + api_father + apis
+bash tools/ctl.sh up-testdb    # + db + migrator (профиль testdb)
+bash tools/ctl.sh down         # остановить базовый стек
+bash tools/ctl.sh down-all     # остановить всё, удалить тома test-DB
+bash tools/ctl.sh logs         # общие логи
+bash tools/ctl.sh restart-api1 # перезапуск конкретного API
+bash tools/ctl.sh migrate-prod # миграции на PROD (осознанно)
 ```
 
-Traefik (внешний, Mode B):
-```bash
-docker compose -f docker-compose.traefik.yml --project-name ${PROJECT_NAME_TRAEFIK:-proxy} restart
-```
+## Безопасность
+- Порты наружу не публикуем; `traefik` слушает только на IP интерфейса WG (`TRAEFIK_BIND_IP`)
+- Секреты — в `.env.secrets` / Docker secrets, не коммитить
+- Доступ к UI только из VPN; по необходимости усилить IP‑фильтрами
 
-Полное пересоздание (применить изменения конфигов):
-```bash
-# внутренний Traefik
-docker compose -f traefik/docker-compose.yml up -d
-# с override
-docker compose -f traefik/docker-compose.yml -f traefik/docker-compose.override.yml up -d
-# внешний Traefik
-docker compose -f docker-compose.traefik.yml --project-name ${PROJECT_NAME_TRAEFIK:-proxy} up -d
+## Структура
 ```
-
-Логи для отладки:
-```bash
-docker logs -f wg-easy
-# внутренний Traefik
-docker logs -f traefik
-# внешний Traefik
-docker logs -f traefik-vpn-external
+wg_client/
+  compose.base.yml
+  compose.apis.yml
+  compose.db.test.yml
+  traefik/
+    traefik.yml
+    dynamic/apis.yml
+  db/
+    init/001_schema.sql
+    migrations/
+  api_father/
+  api_1/
+  api_2/
+  api_3/
+  tools/ctl.sh
+  env.example
 ```
