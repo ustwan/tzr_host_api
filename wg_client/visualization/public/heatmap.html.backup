@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TZR — Интерактивная карта мира • Heatmap + Редактор локаций</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #app { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr; }
+    
+    header {
+      display: flex; gap: 12px; align-items: center; padding: 10px 12px; 
+      border-bottom: 1px solid var(--border); backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, #0b0f1499 0%, #0b0f1400 100%);
+    }
+    header .title { font-weight: 700; letter-spacing: 0.2px; }
+    header .sep { opacity: .3; }
+    header .pill { 
+      padding: 4px 8px; border-radius: var(--radius-full); 
+      background: var(--bg-secondary); color: var(--text-muted); font-size: 12px; 
+    }
+    header .btn-home {
+      margin-left: auto;
+      padding: 6px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    #canvasWrap { position: relative; }
+    #world { position: absolute; inset: 0; display:block; width:100%; height:100%; cursor: crosshair; }
+    #world.edit-mode { cursor: cell; }
+
+    .panel { 
+      position: absolute; top: 12px; left: 12px; width: 380px; max-width: calc(100vw - 24px); 
+      background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); 
+      box-shadow: var(--shadow-lg); max-height: calc(100vh - 100px); overflow-y: auto;
+    }
+    .panel header { border: 0; padding: 12px 14px; background: transparent; font-weight: 700; 
+      border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .panel .content { padding: 0 14px 12px; }
+    
+    .row { 
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 0; 
+    }
+    .row label { color: var(--text-muted); }
+    .row input[type="text"], .row input[type="number"], .row select {
+      width: 100%; padding: 8px 10px; border-radius: var(--radius-md); 
+      border: 1px solid var(--border-light); background: var(--bg-input); color: var(--text-primary);
+    }
+    .row .small { font-size: 12px; color: var(--text-muted); }
+    .btnbar { display: flex; gap: 6px; flex-wrap: wrap; }
+    
+    .location-item {
+      padding: 10px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .location-item:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent-blue);
+    }
+    .location-item.selected {
+      border-color: var(--accent-cyan);
+      background: rgba(34, 211, 238, 0.1);
+    }
+    .location-item.editing {
+      border-color: var(--warning);
+      background: rgba(251, 191, 36, 0.1);
+    }
+    .location-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .location-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .location-type {
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--bg-input);
+    }
+    .location-cells {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .location-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .location-actions .btn {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .edit-form {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .form-row {
+      margin-bottom: 10px;
+    }
+    .form-row label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+    .form-row textarea {
+      resize: vertical;
+      min-height: 50px;
+    }
+
+    .legend { 
+      position: absolute; right: 12px; bottom: 12px; background: var(--bg-panel); 
+      border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; width: 280px; 
+      box-shadow: var(--shadow-lg); 
+    }
+    .legend .bar { 
+      height: 12px; border-radius: 6px; 
+      background: linear-gradient(90deg, #2dd4bf 0%, #22d3ee 20%, #60a5fa 40%, #a78bfa 60%, #f472b6 80%, #fb7185 100%); 
+      margin-bottom: 6px; 
+    }
+    .legend .labels { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 12px; }
+
+    .coords { 
+      position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; 
+      background: #0b1220cc; padding: 6px 10px; border-radius: var(--radius-full); 
+      border: 1px solid var(--border); font-feature-settings: "tnum" on, "lnum" on; 
+    }
+
+    .layerBadge { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .layerBadge .tag { 
+      padding: 4px 8px; border-radius: var(--radius-full); background: #0b1220cc; 
+      border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; 
+    }
+
+    .tip { 
+      position: absolute; pointer-events: none; background: var(--bg-input); 
+      border: 2px solid var(--border); padding: 12px; border-radius: var(--radius-md); 
+      color: var(--text-primary); font-size: 12px; box-shadow: var(--shadow-lg); 
+      transform: translate(-50%, calc(-100% - 15px)); z-index: 1000; min-width: 200px;
+      max-width: 300px;
+    }
+    .tip::after { 
+      content: ""; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); 
+      border: 8px solid transparent; border-top-color: var(--border); 
+    }
+    .tip-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--accent-cyan);
+    }
+    .tip-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tip-row:last-child {
+      border-bottom: none;
+    }
+    .tip-label {
+      color: var(--text-muted);
+    }
+    .tip-value {
+      font-weight: 600;
+    }
+
+    .mode-indicator {
+      position: absolute;
+      top: 80px;
+      right: 12px;
+      padding: 8px 12px;
+      background: var(--warning);
+      color: #000;
+      border-radius: var(--radius-md);
+      font-weight: 700;
+      display: none;
+    }
+    .mode-indicator.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="title">Карта мира • Редактор локаций</div>
+      <div class="sep">•</div>
+      <div class="pill">x∈[−180, 180], y∈[−180, 180]</div>
+      <a href="/" class="btn-home">← Главная</a>
+    </header>
+
+    <div id="canvasWrap">
+      <canvas id="world"></canvas>
+
+      <div class="panel" id="ctrl">
+        <header>
+          <span>Управление</span>
+          <button class="btn btn-sm" id="btnToggleEdit">✏️ Режим редактора</button>
+        </header>
+        <div class="content">
+          <!-- Слои -->
+          <div class="row" style="grid-template-columns: repeat(3, 1fr); gap: 6px;">
+            <label><input type="checkbox" id="chkGrid" checked /> Сетка</label>
+            <label><input type="checkbox" id="chkAxis" checked /> Оси</label>
+            <label><input type="checkbox" id="chkHeat" checked /> Тепло</label>
+          </div>
+
+          <!-- Настройки тепловой карты -->
+          <div class="row">
+            <label>Радиус теплокарты</label>
+            <input type="number" id="heatRadius" min="1" max="60" step="1" value="12" />
+          </div>
+          <div class="row">
+            <label>Прозрачность</label>
+            <input type="number" id="heatAlpha" min="0.05" max="1" step="0.05" value="0.35" />
+          </div>
+          
+          <!-- Загрузка данных -->
+          <div class="row">
+            <div class="btnbar">
+              <button class="btn btn-primary" id="btnLoadAPI">📡 Загрузить из API</button>
+              <button class="btn" id="btnLoadLocal">📂 Локации</button>
+            </div>
+          </div>
+          
+          <!-- Навигация -->
+          <div class="row">
+            <label>Перейти к (x,y)</label>
+            <input type="text" id="jumpXY" placeholder="0, 0" />
+          </div>
+          <div class="row">
+            <div class="btnbar">
+              <button class="btn" id="btnJump">→</button>
+              <button class="btn" id="btnZoomIn">+</button>
+              <button class="btn" id="btnZoomOut">−</button>
+              <button class="btn" id="btnReset">⌂</button>
+            </div>
+          </div>
+
+          <!-- Список локаций -->
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <strong>Локации</strong>
+              <button class="btn btn-sm btn-primary" id="btnAddLocation">➕ Добавить</button>
+            </div>
+            <div id="locationsList"></div>
+          </div>
+
+          <!-- Форма редактирования -->
+          <div id="editForm" style="display: none;">
+            <div class="edit-form">
+              <strong style="display: block; margin-bottom: 10px;">Редактирование локации</strong>
+              <input type="hidden" id="editLocationId" />
+              
+              <div class="form-row">
+                <label>Название</label>
+                <input type="text" id="editName" placeholder="Название локации" />
+              </div>
+              
+              <div class="form-row">
+                <label>Тип</label>
+                <select id="editType">
+                  <option value="dome">🛡️ Купол</option>
+                  <option value="mine">⛏️ Шахта</option>
+                  <option value="farm">🌾 Фарм</option>
+                  <option value="city">🏙️ Город</option>
+                  <option value="fortress">🏰 Крепость</option>
+                </select>
+              </div>
+              
+              <div class="form-row">
+                <label>Описание</label>
+                <textarea id="editDesc" placeholder="Описание локации"></textarea>
+              </div>
+              
+              <div class="form-row">
+                <label>Цвет (hex)</label>
+                <input type="text" id="editColor" placeholder="#22d3ee" />
+              </div>
+              
+              <div class="form-row">
+                <label>Радиус</label>
+                <input type="number" id="editRadius" min="1" max="50" value="10" />
+              </div>
+              
+              <div class="form-row">
+                <label>Ячейки (x,y через ;)</label>
+                <textarea id="editCells" placeholder="0,0; 0,1; 1,0; 1,1"></textarea>
+                <div class="small">Формат: x,y; x,y; ... или кликайте на карте</div>
+              </div>
+              
+              <div class="btnbar" style="margin-top: 12px;">
+                <button class="btn btn-success" id="btnSaveLocation">💾 Сохранить</button>
+                <button class="btn btn-danger" id="btnDeleteLocation">🗑️ Удалить</button>
+                <button class="btn btn-ghost" id="btnCancelEdit">✖ Отмена</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+          <div style="font-weight:700">Интенсивность боёв</div>
+          <div id="legendMax" class="pill" style="background:#0b1220; border:1px solid var(--border);">max: 0</div>
+        </div>
+        <div class="bar"></div>
+        <div class="labels"><span>низкая</span><span>высокая</span></div>
+      </div>
+
+      <div class="coords" id="coords">x: 0, y: 0</div>
+      <div class="layerBadge" id="badges"></div>
+      <div class="tip" id="tip" style="display:none;"></div>
+      <div class="mode-indicator" id="modeIndicator">✏️ РЕЖИМ РЕДАКТОРА</div>
+    </div>
+  </div>
+
+  <div id="error-container"></div>
+  <div id="loading-container" class="loading-container flex-center">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <script src="/assets/js/api-client.js"></script>
+  <script>
+    /*** === Константы мира === ***/
+    const WORLD_MIN = -180, WORLD_MAX = 180, WORLD_SIZE = 360;
+
+    /*** === Состояние === ***/
+    const state = {
+      scale: 4, cx: 0, cy: 0,
+      showGrid: true, showAxis: true, showHeat: true,
+      heatRadiusWU: 12, heatAlpha: 0.35,
+      dragging: false, dragStart: {x:0, y:0, cx:0, cy:0},
+      hoverWorld: {x: 0, y: 0},
+      editMode: false,
+      selectedLocation: null,
+      editingLocation: null,
+    };
+
+    /*** === Данные === ***/
+    let heatData = [];
+    let locations = [];
+    let locationTypes = [];
+
+    /*** === Холст === ***/
+    const canvas = document.getElementById('world');
+    const ctx = canvas.getContext('2d');
+    const wrap = document.getElementById('canvasWrap');
+    const DPR = Math.max(1, window.devicePixelRatio || 1);
+
+    function resizeCanvas() {
+      const w = wrap.clientWidth || window.innerWidth;
+      const h = wrap.clientHeight || (window.innerHeight - document.querySelector('header').offsetHeight);
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      canvas.width = Math.floor(w * DPR); canvas.height = Math.floor(h * DPR);
+      draw();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    /*** === Преобразования === ***/
+    function worldToScreen(wx, wy) {
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      return [(wx - state.cx) * state.scale + W/2, (wy - state.cy) * state.scale + H/2];
+    }
+    function screenToWorld(sx, sy) {
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      return [(sx - W/2) / state.scale + state.cx, (sy - H/2) / state.scale + state.cy];
+    }
+
+    function getHeatMax() { return heatData.length ? Math.max(...heatData.map(d => d.battles)) : 0; }
+
+    /*** === Цвет === ***/
+    function heatColor(t) {
+      const h = (180 * (1 - t));
+      return `hsl(${h} 90% ${40 + 15 * t}%)`;
+    }
+    function applyAlpha(hsl, a) {
+      const [h, s, l] = hsl.match(/[-\d.]+/g).map(Number);
+      return `hsla(${h} ${s}% ${l}%, ${a})`;
+    }
+
+    /*** === Рендеринг === ***/
+    function drawBackground() {
+      ctx.fillStyle = '#0b0f14';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+
+    function drawGrid() {
+      if (!state.showGrid) return;
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      const [wx0, wy0] = screenToWorld(0,0);
+      const [wx1, wy1] = screenToWorld(W,H);
+      const stepWU = niceStep(60 / state.scale);
+
+      ctx.lineWidth = 1; ctx.strokeStyle = '#1f2937';
+      const xStart = Math.ceil(Math.max(WORLD_MIN, Math.min(WORLD_MAX, wx0)) / stepWU) * stepWU;
+      for (let x = xStart; x <= wx1; x += stepWU) {
+        const [sx] = worldToScreen(x, 0);
+        ctx.beginPath(); ctx.moveTo(Math.round(sx) + 0.5, 0); ctx.lineTo(Math.round(sx) + 0.5, H); ctx.stroke();
+      }
+
+      const yStart = Math.ceil(Math.max(WORLD_MIN, Math.min(WORLD_MAX, wy0)) / stepWU) * stepWU;
+      for (let y = yStart; y <= wy1; y += stepWU) {
+        const [, sy] = worldToScreen(0, y);
+        ctx.beginPath(); ctx.moveTo(0, Math.round(sy) + 0.5); ctx.lineTo(W, Math.round(sy) + 0.5); ctx.stroke();
+      }
+
+      ctx.fillStyle = '#64748b'; ctx.font = '12px system-ui';
+      for (let x = xStart, i = 0; x <= wx1; x += stepWU, i++) {
+        if (i % 2) continue;
+        const [sx] = worldToScreen(x, 0);
+        ctx.fillText(String(Math.round(x)), sx + 4, 14);
+      }
+      for (let y = yStart, i = 0; y <= wy1; y += stepWU, i++) {
+        if (i % 2) continue;
+        const [, sy] = worldToScreen(0, y);
+        ctx.fillText(String(Math.round(y)), 4, sy - 4);
+      }
+    }
+
+    function drawAxes() {
+      if (!state.showAxis) return;
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      let [sx0] = worldToScreen(0, 0);
+      ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(Math.round(sx0) + 0.5, 0); ctx.lineTo(Math.round(sx0) + 0.5, H); ctx.stroke();
+      let [, sy0] = worldToScreen(0, 0);
+      ctx.beginPath(); ctx.moveTo(0, Math.round(sy0) + 0.5); ctx.lineTo(W, Math.round(sy0) + 0.5); ctx.stroke();
+
+      ctx.setLineDash([6,4]); ctx.strokeStyle = '#263043'; ctx.lineWidth = 1.5;
+      const [sxMin, syMin] = worldToScreen(WORLD_MIN, WORLD_MIN);
+      const [sxMax, syMax] = worldToScreen(WORLD_MAX, WORLD_MAX);
+      const x = Math.min(sxMin, sxMax), y = Math.min(syMin, syMax);
+      const w = Math.abs(sxMax - sxMin), h = Math.abs(syMax - syMin);
+      ctx.strokeRect(x, y, w, h);
+      ctx.setLineDash([]);
+    }
+
+    function drawHeat() {
+      if (!state.showHeat || !heatData.length) return;
+      const maxB = getHeatMax();
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+
+      for (const d of heatData) {
+        const [x, y] = d.loc;
+        const [sx, sy] = worldToScreen(x, y);
+        const rpx = Math.max(4, state.heatRadiusWU * state.scale);
+        const t = d.battles / maxB;
+        const color = heatColor(Math.pow(t, 0.75));
+        const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rpx);
+        g.addColorStop(0, applyAlpha(color, Math.min(1, state.heatAlpha * Math.max(0.25, t))));
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(sx, sy, rpx, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawLocations() {
+      for (const loc of locations) {
+        // Центр локации (центроид ячеек)
+        if (!loc.cells || loc.cells.length === 0) continue;
+        const centerX = loc.cells.reduce((sum, c) => sum + c.x, 0) / loc.cells.length;
+        const centerY = loc.cells.reduce((sum, c) => sum + c.y, 0) / loc.cells.length;
+        const [sx, sy] = worldToScreen(centerX, centerY);
+        const r = Math.max(4, (loc.radius || 3) * state.scale * 0.5);
+
+        // Круг
+        ctx.beginPath();
+        ctx.fillStyle = (loc.color || '#22d3ee') + '1a';
+        ctx.strokeStyle = loc.color || '#22d3ee';
+        ctx.lineWidth = state.selectedLocation === loc.id ? 3 : 2;
+        ctx.arc(sx, sy, r, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+
+        // Иконка и название
+        const icon = getLocationIcon(loc.type);
+        ctx.fillStyle = loc.color || '#22d3ee';
+        ctx.font = 'bold 13px system-ui';
+        ctx.fillText(`${icon} ${loc.name}`, sx + r + 6, sy + 4);
+
+        // Ячейки (если в режиме редактора)
+        if (state.editMode) {
+          for (const cell of loc.cells) {
+            const [cx, cy] = worldToScreen(cell.x, cell.y);
+            ctx.fillStyle = (loc.color || '#22d3ee') + '40';
+            ctx.strokeStyle = loc.color || '#22d3ee';
+            ctx.lineWidth = 1;
+            const cellSize = Math.max(3, state.scale * 0.8);
+            ctx.fillRect(cx - cellSize/2, cy - cellSize/2, cellSize, cellSize);
+            ctx.strokeRect(cx - cellSize/2, cy - cellSize/2, cellSize, cellSize);
+          }
+        }
+      }
+    }
+
+    function draw() {
+      ctx.save();
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      drawBackground();
+      if (state.showGrid) drawGrid();
+      if (state.showAxis) drawAxes();
+      if (state.showHeat) drawHeat();
+      drawLocations();
+      ctx.restore();
+      updateBadges();
+      updateLegend();
+    }
+
+    function niceStep(raw) {
+      const exp = Math.floor(Math.log10(raw));
+      const base = Math.pow(10, exp);
+      const candidates = [1, 2, 5, 10].map(m => m * base);
+      let best = candidates[0], bestDiff = Infinity;
+      for (const c of candidates) {
+        const diff = Math.abs(c - raw);
+        if (diff < bestDiff) { best = c; bestDiff = diff; }
+      }
+      return Math.max(1, Math.min(100, best));
+    }
+
+    /*** === Ввод === ***/
+    const coordsEl = document.getElementById('coords');
+    const tipEl = document.getElementById('tip');
+
+    function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const [wx, wy] = screenToWorld(mx, my);
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      const newScale = clamp(state.scale * factor, 0.7, 40);
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      state.scale = newScale;
+      state.cx = clamp(wx - (mx - W/2) / newScale, WORLD_MIN, WORLD_MAX);
+      state.cy = clamp(wy - (my - H/2) / newScale, WORLD_MIN, WORLD_MAX);
+      draw();
+    }, { passive: false });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (state.editMode && state.editingLocation) {
+        // Клик в режиме редактора - добавить ячейку
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const [wx, wy] = screenToWorld(mx, my);
+        const cellX = Math.round(wx), cellY = Math.round(wy);
+        
+        const cellsInput = document.getElementById('editCells');
+        const currentCells = cellsInput.value.trim();
+        const newCell = `${cellX},${cellY}`;
+        cellsInput.value = currentCells ? `${currentCells}; ${newCell}` : newCell;
+        
+        // Обновляем временно для предпросмотра
+        updateEditingLocationCells();
+        draw();
+        return;
+      }
+      
+      state.dragging = true;
+      state.dragStart = {x: e.clientX, y: e.clientY, cx: state.cx, cy: state.cy};
+    });
+
+    window.addEventListener('mouseup', () => state.dragging = false);
+    
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const [wx, wy] = screenToWorld(mx, my);
+      state.hoverWorld = { x: wx, y: wy };
+      coordsEl.textContent = `x: ${Math.round(wx)}, y: ${Math.round(wy)}`;
+
+      if (state.dragging && !state.editMode) {
+        const dx = e.clientX - state.dragStart.x, dy = e.clientY - state.dragStart.y;
+        state.cx = clamp(state.dragStart.cx - dx / state.scale, WORLD_MIN, WORLD_MAX);
+        state.cy = clamp(state.dragStart.cy - dy / state.scale, WORLD_MIN, WORLD_MAX);
+        draw();
+      } else {
+        // Tooltip
+        const nearestLoc = findNearestLocation(wx, wy, 15);
+        const nearestHeat = findNearestHeat(wx, wy, 6);
+        
+        if (nearestLoc || nearestHeat) {
+          showTooltip(mx, my, nearestLoc, nearestHeat);
+        } else {
+          tipEl.style.display = 'none';
+        }
+      }
+    });
+
+    canvas.addEventListener('dblclick', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const [wx, wy] = screenToWorld(mx, my);
+      zoomTo(wx, wy, 1.4);
+    });
+
+    function zoomTo(wx, wy, factor) {
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      const mx = worldToScreen(wx, wy)[0], my = worldToScreen(wx, wy)[1];
+      const newScale = clamp(state.scale * factor, 0.7, 40);
+      state.scale = newScale; 
+      state.cx = clamp(wx - (mx - W/2) / newScale, WORLD_MIN, WORLD_MAX); 
+      state.cy = clamp(wy - (my - H/2) / newScale, WORLD_MIN, WORLD_MAX);
+      draw();
+    }
+
+    function resetView() { state.scale = 4; state.cx = 0; state.cy = 0; draw(); }
+
+    function findNearestHeat(wx, wy, thresholdWU=6) {
+      let best = null, bestD2 = thresholdWU*thresholdWU;
+      for (const d of heatData) {
+        const dx = d.loc[0] - wx, dy = d.loc[1] - wy;
+        const d2 = dx*dx + dy*dy;
+        if (d2 <= bestD2) { best = d; bestD2 = d2; }
+      }
+      return best;
+    }
+
+    function findNearestLocation(wx, wy, thresholdWU=15) {
+      for (const loc of locations) {
+        if (!loc.cells || loc.cells.length === 0) continue;
+        const centerX = loc.cells.reduce((sum, c) => sum + c.x, 0) / loc.cells.length;
+        const centerY = loc.cells.reduce((sum, c) => sum + c.y, 0) / loc.cells.length;
+        const dx = centerX - wx, dy = centerY - wy;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist <= thresholdWU) return loc;
+      }
+      return null;
+    }
+
+    function showTooltip(mx, my, location, heatPoint) {
+      tipEl.style.display = 'block';
+      tipEl.style.left = `${mx}px`;
+      tipEl.style.top = `${my}px`;
+      
+      let html = '';
+      
+      if (location) {
+        const icon = getLocationIcon(location.type);
+        html += `<div class="tip-title">${icon} ${location.name}</div>`;
+        html += `<div class="tip-row"><span class="tip-label">Тип:</span><span class="tip-value">${getLocationTypeName(location.type)}</span></div>`;
+        html += `<div class="tip-row"><span class="tip-label">Ячеек:</span><span class="tip-value">${location.cells.length}</span></div>`;
+        
+        if (location.stats) {
+          if (location.stats.total_battles !== undefined) {
+            html += `<div class="tip-row"><span class="tip-label">Боёв:</span><span class="tip-value">${formatNumber(location.stats.total_battles)}</span></div>`;
+          }
+          if (location.stats.win_rate_defender !== undefined) {
+            html += `<div class="tip-row"><span class="tip-label">Винрейт защиты:</span><span class="tip-value">${formatPercent(location.stats.win_rate_defender)}</span></div>`;
+          }
+          if (location.stats.avg_duration !== undefined) {
+            html += `<div class="tip-row"><span class="tip-label">Ср. длительность:</span><span class="tip-value">${location.stats.avg_duration.toFixed(1)} мин</span></div>`;
+          }
+          if (location.stats.resource_type) {
+            html += `<div class="tip-row"><span class="tip-label">Ресурс:</span><span class="tip-value">${location.stats.resource_type}</span></div>`;
+          }
+        }
+        
+        if (location.description) {
+          html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted);">${location.description}</div>`;
+        }
+      }
+      
+      if (heatPoint && !location) {
+        html += `<div class="tip-title">📍 Координаты (${heatPoint.loc[0]}, ${heatPoint.loc[1]})</div>`;
+        html += `<div class="tip-row"><span class="tip-label">Боёв:</span><span class="tip-value">${formatNumber(heatPoint.battles)}</span></div>`;
+      }
+      
+      tipEl.innerHTML = html;
+    }
+
+    function getLocationIcon(type) {
+      const icons = {
+        dome: '🛡️',
+        mine: '⛏️',
+        farm: '🌾',
+        city: '🏙️',
+        fortress: '🏰'
+      };
+      return icons[type] || '📍';
+    }
+
+    function getLocationTypeName(type) {
+      const names = {
+        dome: 'Купол',
+        mine: 'Шахта',
+        farm: 'Точка фарма',
+        city: 'Город',
+        fortress: 'Крепость'
+      };
+      return names[type] || type;
+    }
+
+    /*** === UI === ***/
+    const bind = (id) => document.getElementById(id);
+    bind('chkGrid').onchange = e => { state.showGrid = e.target.checked; draw(); }
+    bind('chkAxis').onchange = e => { state.showAxis = e.target.checked; draw(); }
+    bind('chkHeat').onchange = e => { state.showHeat = e.target.checked; draw(); }
+    bind('heatRadius').onchange = e => { state.heatRadiusWU = Number(e.target.value) || 12; draw(); }
+    bind('heatAlpha').onchange = e => { state.heatAlpha = Math.max(0.05, Math.min(1, Number(e.target.value) || 0.35)); draw(); }
+
+    bind('btnZoomIn').onclick = () => zoomTo(state.cx, state.cy, 1.2);
+    bind('btnZoomOut').onclick = () => zoomTo(state.cx, state.cy, 1/1.2);
+    bind('btnReset').onclick = resetView;
+
+    bind('btnJump').onclick = () => {
+      const v = bind('jumpXY').value.trim();
+      const m = v.match(/-?\d+(?:\.\d+)?/g);
+      if (m && m.length >= 2) {
+        state.cx = clamp(parseFloat(m[0]), WORLD_MIN, WORLD_MAX);
+        state.cy = clamp(parseFloat(m[1]), WORLD_MIN, WORLD_MAX);
+        draw();
+      } else {
+        alert('Введите координаты в формате: x, y');
+      }
+    };
+
+
+    bind('btnLoadLocal').onclick = async () => {
+      showLoading();
+      try {
+        const resp = await fetch('/data/locations.json');
+        if (!resp.ok) throw new Error('Файл не найден');
+        const data = await resp.json();
+        locations = data.locations || [];
+        locationTypes = data.location_types || [];
+        renderLocationsList();
+        draw();
+        alert(`Загружено ${locations.length} локаций из файла`);
+      } catch (err) {
+        showError('Ошибка загрузки: ' + err.message);
+      } finally {
+        hideLoading();
+      }
+    };
+
+    bind('btnLoadAPI').onclick = async () => {
+      showLoading();
+      try {
+        // Проверяем что api доступен
+        if (typeof api === 'undefined' || !api) {
+          throw new Error('API клиент не загружен. Перезагрузите страницу.');
+        }
+        
+        // Загрузка тепловой карты
+        const heatResult = await api.getBattlesHeatmap({ limit: 500 });
+        if (heatResult.success && Array.isArray(heatResult.data)) {
+          heatData = heatResult.data.filter(o => Array.isArray(o.loc) && o.loc.length===2 && Number.isFinite(o.battles));
+        }
+        
+        // Пробуем загрузить локации (если endpoint существует)
+        try {
+          const locResult = await api.getLocations();
+          if (locResult.success && Array.isArray(locResult.data)) {
+            locations = locResult.data;
+          }
+        } catch (locErr) {
+          console.log('Локации из API недоступны, используются локальные');
+        }
+        
+        renderLocationsList();
+        draw();
+        alert(`Загружено ${heatData.length} точек тепловой карты`);
+      } catch (err) {
+        showError('Ошибка загрузки из API: ' + err.message);
+      } finally {
+        hideLoading();
+      }
+    };
+
+    /*** === Режим редактора === ***/
+    bind('btnToggleEdit').onclick = () => {
+      state.editMode = !state.editMode;
+      const btn = bind('btnToggleEdit');
+      const indicator = bind('modeIndicator');
+      
+      if (state.editMode) {
+        btn.textContent = '✅ Выход из редактора';
+        btn.classList.add('btn-warning');
+        indicator.classList.add('active');
+        canvas.classList.add('edit-mode');
+      } else {
+        btn.textContent = '✏️ Режим редактора';
+        btn.classList.remove('btn-warning');
+        indicator.classList.remove('active');
+        canvas.classList.remove('edit-mode');
+        state.editingLocation = null;
+        bind('editForm').style.display = 'none';
+      }
+      draw();
+    };
+
+    bind('btnAddLocation').onclick = () => {
+      if (!state.editMode) {
+        alert('Включите режим редактора');
+        return;
+      }
+      
+      const newLoc = {
+        id: 'new_' + Date.now(),
+        name: 'Новая локация',
+        type: 'dome',
+        description: '',
+        color: '#22d3ee',
+        radius: 10,
+        cells: [],
+        stats: {}
+      };
+      
+      locations.push(newLoc);
+      renderLocationsList();
+      editLocation(newLoc.id);
+    };
+
+    function renderLocationsList() {
+      const list = bind('locationsList');
+      if (locations.length === 0) {
+        list.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">Локации не загружены</div>';
+        return;
+      }
+      
+      list.innerHTML = locations.map(loc => {
+        const icon = getLocationIcon(loc.type);
+        const isSelected = state.selectedLocation === loc.id;
+        const isEditing = state.editingLocation === loc.id;
+        return `
+          <div class="location-item ${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''}" onclick="selectLocation('${loc.id}')">
+            <div class="location-header">
+              <span class="location-name">${icon} ${loc.name}</span>
+              <span class="location-type">${getLocationTypeName(loc.type)}</span>
+            </div>
+            <div class="location-cells">${loc.cells.length} ячеек</div>
+            ${state.editMode ? `
+              <div class="location-actions">
+                <button class="btn btn-sm" onclick="event.stopPropagation(); editLocation('${loc.id}')">✏️</button>
+                <button class="btn btn-sm" onclick="event.stopPropagation(); jumpToLocation('${loc.id}')">→</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectLocation(locId) {
+      state.selectedLocation = state.selectedLocation === locId ? null : locId;
+      renderLocationsList();
+      draw();
+    }
+
+    function jumpToLocation(locId) {
+      const loc = locations.find(l => l.id === locId);
+      if (!loc || !loc.cells || loc.cells.length === 0) return;
+      
+      const centerX = loc.cells.reduce((sum, c) => sum + c.x, 0) / loc.cells.length;
+      const centerY = loc.cells.reduce((sum, c) => sum + c.y, 0) / loc.cells.length;
+      
+      state.cx = centerX;
+      state.cy = centerY;
+      state.scale = 6;
+      draw();
+    }
+
+    function editLocation(locId) {
+      const loc = locations.find(l => l.id === locId);
+      if (!loc) return;
+      
+      state.editingLocation = locId;
+      state.selectedLocation = locId;
+      
+      bind('editLocationId').value = loc.id;
+      bind('editName').value = loc.name;
+      bind('editType').value = loc.type;
+      bind('editDesc').value = loc.description || '';
+      bind('editColor').value = loc.color || '#22d3ee';
+      bind('editRadius').value = loc.radius || 10;
+      bind('editCells').value = loc.cells.map(c => `${c.x},${c.y}`).join('; ');
+      
+      bind('editForm').style.display = 'block';
+      renderLocationsList();
+      draw();
+    }
+
+    function updateEditingLocationCells() {
+      if (!state.editingLocation) return;
+      const loc = locations.find(l => l.id === state.editingLocation);
+      if (!loc) return;
+      
+      const cellsText = bind('editCells').value.trim();
+      const cellsArray = cellsText.split(';').map(pair => {
+        const [x, y] = pair.trim().split(',').map(Number);
+        return { x, y };
+      }).filter(c => !isNaN(c.x) && !isNaN(c.y));
+      
+      loc.cells = cellsArray;
+    }
+
+    bind('btnSaveLocation').onclick = async () => {
+      const locId = bind('editLocationId').value;
+      const loc = locations.find(l => l.id === locId);
+      if (!loc) return;
+      
+      loc.name = bind('editName').value.trim() || 'Без названия';
+      loc.type = bind('editType').value;
+      loc.description = bind('editDesc').value.trim();
+      loc.color = bind('editColor').value.trim() || '#22d3ee';
+      loc.radius = Number(bind('editRadius').value) || 10;
+      
+      const cellsText = bind('editCells').value.trim();
+      loc.cells = cellsText.split(';').map(pair => {
+        const [x, y] = pair.trim().split(',').map(Number);
+        return { x, y };
+      }).filter(c => !isNaN(c.x) && !isNaN(c.y));
+      
+      if (loc.cells.length === 0) {
+        alert('Добавьте хотя бы одну ячейку');
+        return;
+      }
+      
+      // Сохранение в API
+      try {
+        if (locId.startsWith('new_')) {
+          await api.createLocation(loc);
+          alert('Локация создана');
+        } else {
+          await api.updateLocation(locId, loc);
+          alert('Локация обновлена');
+        }
+      } catch (err) {
+        console.error('Ошибка сохранения:', err);
+        alert('Локация сохранена локально (API недоступен)');
+      }
+      
+      state.editingLocation = null;
+      bind('editForm').style.display = 'none';
+      renderLocationsList();
+      draw();
+    };
+
+    bind('btnDeleteLocation').onclick = async () => {
+      if (!confirm('Удалить локацию?')) return;
+      
+      const locId = bind('editLocationId').value;
+      const idx = locations.findIndex(l => l.id === locId);
+      if (idx === -1) return;
+      
+      try {
+        await api.deleteLocation(locId);
+      } catch (err) {
+        console.error('Ошибка удаления:', err);
+      }
+      
+      locations.splice(idx, 1);
+      state.editingLocation = null;
+      state.selectedLocation = null;
+      bind('editForm').style.display = 'none';
+      renderLocationsList();
+      draw();
+    };
+
+    bind('btnCancelEdit').onclick = () => {
+      state.editingLocation = null;
+      bind('editForm').style.display = 'none';
+      renderLocationsList();
+      draw();
+    };
+
+    function updateLegend() {
+      document.getElementById('legendMax').textContent = 'max: ' + formatNumber(getHeatMax()||0);
+    }
+
+    function updateBadges() {
+      const el = document.getElementById('badges');
+      el.innerHTML = '';
+      const add = (txt) => { const s=document.createElement('div'); s.className='tag'; s.textContent=txt; el.appendChild(s); };
+      if (state.showHeat) add('Теплокарта');
+      add(`Локаций: ${locations.length}`);
+      if (state.showGrid) add('Сетка');
+      if (state.showAxis) add('Оси');
+    }
+
+    // Инициализация
+    resizeCanvas();
+    resetView();
+    
+    // Автозагрузка локаций при старте
+    bind('btnLoadLocal').click();
+  </script>
+</body>
+</html>

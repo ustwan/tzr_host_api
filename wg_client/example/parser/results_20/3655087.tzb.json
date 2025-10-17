@@ -1,0 +1,206 @@
+{
+  "battle": {
+    "id": 3655087,
+    "ts": "2025-09-20T12:30:01Z",
+    "size_bytes": 69019,
+    "sha256": "99cb123c240b07e147850576f705d2d7c43a68c2374c8b2564f925fc0bfa20f1",
+    "storage_key": "3655087.tzb",
+    "compressed": false,
+    "turns": 6,
+    "battle_type": "B",
+    "loc": {
+      "x": -40,
+      "y": -44
+    },
+    "start_ts_unix": 1758371294,
+    "players_cnt": 1,
+    "monsters_cnt": 34,
+    "entities_cnt": 35,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "Amigo",
+      "clan": "StalkerZ",
+      "profession": 2,
+      "side": 1,
+      "rank_points": 363.8,
+      "pve_points": 290045,
+      "level": 12,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 34,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 5570,
+          "critical": 320
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Gems",
+            "qty": 4
+          },
+          {
+            "name": "Metals",
+            "qty": 64
+          },
+          {
+            "name": "Organic",
+            "qty": 66
+          },
+          {
+            "name": "Polymers",
+            "qty": 32
+          },
+          {
+            "name": "Precious metals",
+            "qty": 64
+          },
+          {
+            "name": "Radioactive materials",
+            "qty": 16
+          },
+          {
+            "name": "Silicon",
+            "qty": 1
+          },
+          {
+            "name": "Venom",
+            "qty": 23
+          }
+        ],
+        "monster_parts": [
+          {
+            "name": "Rat Brain",
+            "qty": 4
+          },
+          {
+            "name": "Rat Fang",
+            "qty": 2
+          },
+          {
+            "name": "Stich Blood",
+            "qty": 2
+          },
+          {
+            "name": "Stich Bone Marrow",
+            "qty": 4
+          },
+          {
+            "name": "Stich Claw",
+            "qty": 2
+          },
+          {
+            "name": "Stich Meat",
+            "qty": 6
+          }
+        ],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 17,
+      "min_level": 14,
+      "max_level": 18
+    },
+    {
+      "kind": "rat_spec",
+      "spec": "5",
+      "side": 2,
+      "count": 1,
+      "min_level": 16,
+      "max_level": 16
+    },
+    {
+      "kind": "sti",
+      "spec": null,
+      "side": 2,
+      "count": 16,
+      "min_level": 14,
+      "max_level": 17
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Gems",
+        "qty": 4
+      },
+      {
+        "name": "Metals",
+        "qty": 64
+      },
+      {
+        "name": "Organic",
+        "qty": 66
+      },
+      {
+        "name": "Polymers",
+        "qty": 32
+      },
+      {
+        "name": "Precious metals",
+        "qty": 64
+      },
+      {
+        "name": "Radioactive materials",
+        "qty": 16
+      },
+      {
+        "name": "Silicon",
+        "qty": 1
+      },
+      {
+        "name": "Venom",
+        "qty": 23
+      }
+    ],
+    "monster_parts": [
+      {
+        "name": "Rat Brain",
+        "qty": 4
+      },
+      {
+        "name": "Rat Fang",
+        "qty": 2
+      },
+      {
+        "name": "Stich Blood",
+        "qty": 2
+      },
+      {
+        "name": "Stich Bone Marrow",
+        "qty": 4
+      },
+      {
+        "name": "Stich Claw",
+        "qty": 2
+      },
+      {
+        "name": "Stich Meat",
+        "qty": 6
+      }
+    ],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_A6C9E6D0AA13B387",
+    "cs": "blake2s8:A6C9E6D0AA13B387"
+  }
+}

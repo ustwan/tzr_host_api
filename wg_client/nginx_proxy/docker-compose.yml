@@ -1,0 +1,50 @@
+version: '3.8'
+
+# ============================================================================
+# NGINX REVERSE PROXY - ЛОКАЛЬНАЯ РАЗРАБОТКА
+# ============================================================================
+# Запуск: docker compose -f nginx_proxy/docker-compose.yml up -d
+# Доступ: http://localhost:8080/api/register
+# ============================================================================
+
+services:
+  nginx_proxy:
+    image: nginx:alpine
+    container_name: nginx_api_proxy
+    restart: unless-stopped
+    
+    ports:
+      # Внешний порт 8090 → внутренний 80
+      - "8090:80"
+    
+    volumes:
+      # Конфигурация nginx
+      - ./nginx.dev.fixed.conf:/etc/nginx/nginx.conf:ro
+      
+      # Логи на хосте для отладки
+      - ./logs:/var/log/nginx
+    
+    # Для доступа к host.docker.internal на Linux
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    
+    networks:
+      - proxy_net
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/nginx_status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  proxy_net:
+    driver: bridge
+

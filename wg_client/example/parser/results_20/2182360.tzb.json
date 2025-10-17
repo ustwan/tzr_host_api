@@ -1,0 +1,153 @@
+{
+  "battle": {
+    "id": 2182360,
+    "ts": "2025-10-02T17:59:26Z",
+    "size_bytes": 288150,
+    "sha256": "4b057304cc1ab8339d74ac78dead3517d05bbd863da651d2f773bcc35543c194",
+    "storage_key": "2182360.tzb",
+    "compressed": false,
+    "turns": 2,
+    "battle_type": "A",
+    "loc": {
+      "x": 6,
+      "y": 9
+    },
+    "start_ts_unix": 1759427864,
+    "players_cnt": 1,
+    "monsters_cnt": 408,
+    "entities_cnt": 409,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "test101",
+      "clan": "SMArt",
+      "profession": 2,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 8000000,
+      "level": 20,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 408,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 204000
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 183,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "rat_spec",
+      "spec": "1",
+      "side": 2,
+      "count": 4,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "rat_spec",
+      "spec": "2",
+      "side": 2,
+      "count": 10,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "rat_spec",
+      "spec": "3",
+      "side": 2,
+      "count": 1,
+      "min_level": 11,
+      "max_level": 11
+    },
+    {
+      "kind": "rat_spec",
+      "spec": "4",
+      "side": 2,
+      "count": 5,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "rat_spec",
+      "spec": "5",
+      "side": 2,
+      "count": 1,
+      "min_level": 13,
+      "max_level": 13
+    },
+    {
+      "kind": "sti",
+      "spec": null,
+      "side": 2,
+      "count": 176,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "sti_spec",
+      "spec": "1",
+      "side": 2,
+      "count": 3,
+      "min_level": 11,
+      "max_level": 13
+    },
+    {
+      "kind": "sti_spec",
+      "spec": "2",
+      "side": 2,
+      "count": 11,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "sti_spec",
+      "spec": "3",
+      "side": 2,
+      "count": 3,
+      "min_level": 11,
+      "max_level": 13
+    },
+    {
+      "kind": "sti_spec",
+      "spec": "4",
+      "side": 2,
+      "count": 11,
+      "min_level": 11,
+      "max_level": 14
+    }
+  ],
+  "loot_total": {
+    "resources": [],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_4BB15B75CA9CF409",
+    "cs": "blake2s8:4BB15B75CA9CF409"
+  }
+}

@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WG_HUB — Поиск игроков</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background: var(--bg-primary);
+    }
+
+    .header {
+      background: rgba(28, 28, 30, 0.8);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      padding: 16px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: var(--shadow-md);
+    }
+
+    .header .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 1.5em;
+      color: var(--text-primary);
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .btn-home {
+      padding: 8px 16px;
+      background: rgba(58, 58, 60, 0.4);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 13px;
+      transition: var(--transition-fast);
+    }
+
+    .btn-home:hover {
+      background: rgba(58, 58, 60, 0.6);
+      border-color: var(--border-light);
+      transform: scale(1.02);
+    }
+
+    main {
+      flex: 1;
+      padding: 32px 0;
+    }
+
+    .search-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .search-box {
+      display: flex;
+      gap: 12px;
+      max-width: 600px;
+    }
+
+    .search-box input {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 16px;
+    }
+
+    #player-results {
+      margin-top: 24px;
+    }
+
+    .player-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .player-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    .player-info h2 {
+      font-size: 2em;
+      margin: 0 0 8px 0;
+    }
+
+    .player-id {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .tab {
+      padding: 12px 24px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: -2px;
+    }
+
+    .tab.active {
+      color: var(--accent-blue);
+      border-bottom-color: var(--accent-blue);
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin-bottom: 32px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .antibot-section {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--warning);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .antibot-section.safe {
+      border-left-color: var(--success);
+    }
+
+    .antibot-section.danger {
+      border-left-color: var(--danger);
+    }
+
+    .antibot-title {
+      font-size: 1.25em;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .antibot-flags {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .antibot-flag {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+    }
+
+    .flag-icon {
+      font-size: 18px;
+    }
+
+    .cluster-card {
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.1), rgba(167, 139, 250, 0.1));
+      border: 1px solid var(--accent-blue);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .cluster-title {
+      font-size: 1.125em;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .cluster-desc {
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .tanks-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .tank-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    .tank-name {
+      font-weight: 500;
+    }
+
+    .tank-battles {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1>👤 Поиск игроков</h1>
+      <a href="/" class="btn-home">← Главная</a>
+    </div>
+  </div>
+
+  <main>
+    <div class="container">
+      <div class="search-section">
+        <h3>Поиск игрока</h3>
+        <div class="search-box">
+          <input 
+            type="search" 
+            id="search-input" 
+            placeholder="Введите точный никнейм игрока (login)..."
+            autocomplete="off"
+          >
+          <button class="btn btn-primary" id="search-btn">🔍 Найти</button>
+        </div>
+        <div style="margin-top: 12px; display: grid; gap: 8px;">
+          <select id="top-metric" style="padding: 8px; border-radius: var(--radius-md); background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary);">
+            <option value="battles">По количеству боёв</option>
+            <option value="wins">По победам</option>
+            <option value="kills_monsters">По убийствам монстров</option>
+            <option value="kills_players">По убийствам игроков</option>
+            <option value="pve_points">По PvE очкам</option>
+          </select>
+          <button class="btn" id="btn-show-top">📊 Показать топ игроков</button>
+        </div>
+        
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <h4 style="margin-bottom: 12px;">Игроки по профессиям</h4>
+          <div style="display: grid; gap: 8px;">
+            <select id="profession-select" style="padding: 8px; border-radius: var(--radius-md); background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary);">
+              <option value="">Выберите профессию...</option>
+              <option value="без профессии">0: без профессии</option>
+              <option value="корсар">1: корсар</option>
+              <option value="сталкер">2: сталкер</option>
+              <option value="старатель">3: старатель</option>
+              <option value="инженер">4: инженер</option>
+              <option value="наемник">5: наемник</option>
+              <option value="торговец">6: торговец</option>
+              <option value="патрульный">7: патрульный</option>
+              <option value="штурмовик">8: штурмовик</option>
+              <option value="специалист">9: специалист</option>
+              <option value="журналист">10: журналист</option>
+              <option value="чиновник">11: чиновник</option>
+              <option value="псионик">12: псионик</option>
+              <option value="каторжник">13: каторжник</option>
+              <option value="пси-кинетик">14: пси-кинетик</option>
+              <option value="пси-медик">15: пси-медик</option>
+              <option value="пси-лидер">16: пси-лидер</option>
+              <option value="полиморф">17: полиморф</option>
+            </select>
+            <button class="btn" id="btn-show-profession">👥 Показать игроков</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="player-results"></div>
+    </div>
+  </main>
+
+  <div id="error-container"></div>
+  <div id="loading-container" class="loading-container flex-center">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <script src="/assets/js/api-client.js"></script>
+  <script>
+    let currentPlayer = null;
+    let charts = {};
+
+    // Поиск из URL параметра
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    if (searchParam) {
+      document.getElementById('search-input').value = searchParam;
+      searchPlayer(searchParam);
+    }
+
+    // Обработчики поиска
+    document.getElementById('search-btn').addEventListener('click', () => {
+      const login = document.getElementById('search-input').value.trim();
+      if (login) searchPlayer(login);
+    });
+
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const login = e.target.value.trim();
+        if (login) searchPlayer(login);
+      }
+    });
+
+    document.getElementById('btn-show-top').addEventListener('click', showTopPlayers);
+    document.getElementById('btn-show-profession').addEventListener('click', showPlayersByProfession);
+
+    // Поиск игрока
+    async function searchPlayer(login) {
+      showLoading();
+      const resultsEl = document.getElementById('player-results');
+      resultsEl.innerHTML = '';
+
+      try {
+        // API4: /analytics/player/{login}
+        const result = await api.client.get(`/analytics/player/${encodeURIComponent(login)}`);
+        const data = result.success ? result.data : result;
+        
+        if (data.detail || !data.login) {
+          throw new Error('Игрок не найден');
+        }
+
+        currentPlayer = {
+          player_id: data.player_id,
+          nickname: data.login,
+          account_id: data.player_id
+        };
+        
+        await loadPlayerData(data);
+        
+      } catch (error) {
+        showError(error.message);
+        resultsEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">😕</div>
+            <h3>Игрок не найден</h3>
+            <p>Попробуйте точный никнейм (login) или используйте кнопку "Показать топ игроков"</p>
+          </div>
+        `;
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Показать топ игроков
+    async function showTopPlayers() {
+      showLoading();
+      const resultsEl = document.getElementById('player-results');
+      const metric = document.getElementById('top-metric').value;
+      console.log('🔍 Загрузка топа игроков с метрикой:', metric);
+
+      try {
+        const params = { 
+          limit: 20,
+          sort_by: metric
+        };
+        console.log('📡 API запрос:', '/analytics/players/top', params);
+        const result = await api.client.get('/analytics/players/top', params);
+        const data = result.success ? result.data : result;
+        console.log('📊 Получено записей:', data?.length, 'Первая запись:', data?.[0]);
+        
+        if (!Array.isArray(data) || data.length === 0) {
+          throw new Error('Нет данных');
+        }
+
+        const metricNames = {
+          'battles': 'боёв',
+          'wins': 'побед',
+          'kills_monsters': 'убийств монстров',
+          'kills_players': 'убийств игроков',
+          'pve_points': 'PvE очков'
+        };
+
+        // Функция для выделения активной колонки
+        const highlightClass = (m) => metric === m ? 'style="background: var(--accent-primary); color: white;"' : '';
+
+        resultsEl.innerHTML = `
+          <div class="player-card">
+            <h2>Топ-20 игроков по ${metricNames[metric] || 'боёв'}</h2>
+            <p style="margin-top: 8px; color: var(--text-secondary); font-size: 14px;">
+              📊 Всего данные за весь доступный период. Сортировка: <strong>${metricNames[metric]}</strong>
+            </p>
+            <table style="width: 100%; margin-top: 20px;">
+              <thead>
+                <tr>
+                  <th>Место</th>
+                  <th>Игрок</th>
+                  <th ${highlightClass('battles')}>Боёв</th>
+                  <th ${highlightClass('wins')}>Побед</th>
+                  <th ${highlightClass('kills_monsters')}>Монстров</th>
+                  <th ${highlightClass('kills_players')}>Игроков</th>
+                  <th ${highlightClass('pve_points')}>PvE очки</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map((p, idx) => {
+                  // Безопасное извлечение полей
+                  const battles = p.battles_count || p.battles || p.total_battles || 0;
+                  const wins = p.wins || p.win_count || 0;
+                  const killsMonsters = p.kills_monsters || p.monster_kills || 0;
+                  const killsPlayers = p.kills_players || p.player_kills || 0;
+                  const pvePoints = p.pve_points || p.pve_score || 0;
+                  
+                  return `
+                  <tr>
+                    <td><strong>#${idx + 1}</strong></td>
+                    <td><strong>${p.login}</strong></td>
+                    <td ${highlightClass('battles')}>${battles}</td>
+                    <td ${highlightClass('wins')}>${wins}</td>
+                    <td ${highlightClass('kills_monsters')}>${killsMonsters}</td>
+                    <td ${highlightClass('kills_players')}>${killsPlayers}</td>
+                    <td ${highlightClass('pve_points')}>${pvePoints}</td>
+                    <td><button class="btn btn-sm" onclick="searchPlayer('${p.login}')">Детали</button></td>
+                  </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Показать игроков по профессии
+    async function showPlayersByProfession() {
+      const profession = document.getElementById('profession-select').value;
+      
+      if (!profession) {
+        alert('Выберите профессию');
+        return;
+      }
+      
+      showLoading();
+      const resultsEl = document.getElementById('player-results');
+
+      try {
+        const result = await api.client.get('/players/by-profession', { 
+          profession: profession,
+          limit: 50,
+          days: 365,
+          min_battles: 1
+        });
+        const data = result.success ? result.data : result;
+        
+        if (data.detail || !Array.isArray(data) || data.length === 0) {
+          throw new Error('Нет данных');
+        }
+
+        resultsEl.innerHTML = `
+          <div class="player-card">
+            <h2>Игроки: ${profession} (${data.length})</h2>
+            <table style="width: 100%; margin-top: 20px;">
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Игрок</th>
+                  <th>Боёв</th>
+                  <th>Винрейт</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map((p, idx) => `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td><strong style="cursor: pointer; color: var(--accent-blue);" onclick="searchPlayer('${p.login || p.nickname}')">${p.login || p.nickname}</strong></td>
+                    <td>${p.battles || p.battles_count || 0}</td>
+                    <td>${p.win_rate ? formatPercent(p.win_rate) : '—'}</td>
+                    <td><button class="btn btn-sm" onclick="searchPlayer('${p.login || p.nickname}')">Детали</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+      } catch (err) {
+        showError('Ошибка загрузки: ' + err.message);
+        resultsEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🚧</div>
+            <h3>Ошибка загрузки</h3>
+            <p>${err.message}</p>
+          </div>
+        `;
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Загрузка всех данных игрока
+    async function loadPlayerData(playerData) {
+      showLoading();
+
+      try {
+        const login = playerData.login;
+        
+        // Загрузка всех данных параллельно
+        const [antibotRes, playstyleRes, battlesRes, farmRes, rivalsRes, alliesRes] = await Promise.allSettled([
+          api.client.get(`/analytics/antibot/player/${login}`),
+          api.client.get(`/analytics/playstyle/${login}`),
+          api.client.get(`/analytics/battles/player/${login}`, { limit: 100 }),
+          api.client.get(`/analytics/economy/farm-efficiency/${login}`),
+          api.client.get(`/analytics/social/rivals/${login}`),
+          api.client.get(`/analytics/social/allies/${login}`)
+        ]);
+
+        const antibotData = antibotRes.status === 'fulfilled' ? (antibotRes.value.success ? antibotRes.value.data : antibotRes.value) : null;
+        const playstyleData = playstyleRes.status === 'fulfilled' ? (playstyleRes.value.success ? playstyleRes.value.data : playstyleRes.value) : null;
+        const battlesData = battlesRes.status === 'fulfilled' ? (battlesRes.value.success ? battlesRes.value.data : battlesRes.value) : null;
+        const farmData = farmRes.status === 'fulfilled' ? (farmRes.value.success ? farmRes.value.data : farmRes.value) : null;
+        const rivalsData = rivalsRes.status === 'fulfilled' ? (rivalsRes.value.success ? rivalsRes.value.data : rivalsRes.value) : null;
+        const alliesData = alliesRes.status === 'fulfilled' ? (alliesRes.value.success ? alliesRes.value.data : alliesRes.value) : null;
+
+        renderPlayerCard(playerData, antibotData, playstyleData, battlesData, farmData, rivalsData, alliesData);
+
+      } catch (error) {
+        showError('Ошибка загрузки данных: ' + error.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Рендер карточки игрока
+    function renderPlayerCard(playerData, antibot, playstyle, battles, farm, rivals, allies) {
+      const resultsEl = document.getElementById('player-results');
+      
+      resultsEl.innerHTML = `
+        <div class="player-card">
+          <div class="player-header">
+            <div class="player-info">
+              <h2>${playerData.login || 'Unknown Player'}</h2>
+              <div class="player-id">Player ID: ${playerData.player_id}</div>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <button class="tab active" data-tab="overview">Обзор</button>
+            <button class="tab" data-tab="battles">Последние 100 боёв</button>
+            <button class="tab" data-tab="playstyle">Стиль игры</button>
+            <button class="tab" data-tab="economy">Экономика</button>
+            <button class="tab" data-tab="social">Социальное</button>
+          </div>
+
+          <div class="tab-content active" id="tab-overview">
+            ${renderOverviewTab(playerData, antibot, playstyle, battles)}
+          </div>
+          
+          <div class="tab-content" id="tab-battles">
+            ${renderBattlesTab(battles)}
+          </div>
+          
+          <div class="tab-content" id="tab-playstyle">
+            ${renderPlaystyleTab(playstyle)}
+          </div>
+          
+          <div class="tab-content" id="tab-economy">
+            ${renderEconomyTab(farm)}
+          </div>
+          
+          <div class="tab-content" id="tab-social">
+            ${renderSocialTab(rivals, allies)}
+          </div>
+        </div>
+      `;
+
+      // Обработчики табов
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+      });
+    }
+
+    // Создание матрицы тепловой карты активности
+    function createActivityHeatmap(battles) {
+      const matrix = Array(7).fill(0).map(() => Array(24).fill(0));
+      
+      if (!battles || !Array.isArray(battles)) {
+        return matrix;
+      }
+      
+      battles.forEach(battle => {
+        const date = new Date(battle.ts || battle.start_ts || battle.timestamp);
+        if (!isNaN(date.getTime())) {
+          const dayOfWeek = (date.getDay() + 6) % 7; // 0 = Пн, 6 = Вс (конвертируем из 0=Вс)
+          const hour = date.getHours();
+          matrix[dayOfWeek][hour]++;
+        }
+      });
+      
+      return matrix;
+    }
+
+    // Рендеринг секции тепловой карты активности
+    function renderActivityHeatmapSection(matrix, battles) {
+      if (!matrix || !battles || battles.length === 0) {
+        return '';
+      }
+
+      const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+      const maxValue = Math.max(...matrix.flat(), 1);
+      
+      const getColor = (value) => {
+        if (value === 0) return 'rgba(255, 255, 255, 0.03)';
+        const intensity = Math.min(value / maxValue, 1);
+        
+        const baseColor = intensity < 0.3 ? 
+          [94, 92, 230] : // фиолетовый
+          intensity < 0.6 ? 
+          [10, 132, 255] : // синий
+          [48, 209, 88]; // зеленый
+        
+        const alpha = 0.2 + (intensity * 0.6);
+        return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, ${alpha})`;
+      };
+      
+      return `
+        <div style="margin-top: 24px;">
+          <h3 style="margin-bottom: 16px;">📊 Активность по времени (последние ${battles.length} боёв)</h3>
+          
+          <div style="
+            background: linear-gradient(135deg, rgba(30, 30, 32, 0.95) 0%, rgba(28, 28, 30, 0.95) 100%);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          ">
+            <div style="overflow-x: auto;">
+              <table style="
+                border-collapse: separate;
+                border-spacing: 2px;
+                margin: 0 auto;
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+              ">
+                <thead>
+                  <tr>
+                    <th style="padding: 4px; text-align: center; font-weight: 500; color: rgba(255, 255, 255, 0.4); font-size: 8px;"></th>
+                    ${Array(24).fill(0).map((_, h) => `
+                      <th style="padding: 4px 3px; text-align: center; font-weight: 500; color: rgba(255, 255, 255, ${h % 6 === 0 ? '0.5' : '0.35'}); font-size: 8px;">${h}</th>
+                    `).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${matrix.map((dayData, dayIdx) => `
+                    <tr>
+                      <td style="padding: 4px 6px; text-align: right; font-weight: 600; color: rgba(255, 255, 255, 0.7); font-size: 9px;">${days[dayIdx]}</td>
+                      ${dayData.map((value, hour) => `
+                        <td style="padding: 0;">
+                          <div 
+                            style="
+                              width: 16px;
+                              height: 16px;
+                              background: ${getColor(value)};
+                              border-radius: 3px;
+                              cursor: ${value > 0 ? 'pointer' : 'default'};
+                              transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+                              border: 1px solid ${value > 0 ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)'};
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                            "
+                            title="${days[dayIdx]}, ${hour}:00 - ${value} боёв"
+                            ${value > 0 ? `
+                              onmouseover="this.style.transform='scale(1.15)'; this.style.borderColor='rgba(255, 255, 255, 0.3)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.3)';"
+                              onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(255, 255, 255, 0.1)'; this.style.boxShadow='none';"
+                            ` : ''}
+                          >
+                            ${value > 0 && value < 100 ? `<span style="font-size: 7px; font-weight: 700; color: rgba(255, 255, 255, 0.95);">${value}</span>` : ''}
+                          </div>
+                        </td>
+                      `).join('')}
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            
+            <div style="
+              margin-top: 10px;
+              padding-top: 10px;
+              border-top: 1px solid rgba(255, 255, 255, 0.06);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+              font-size: 8px;
+              color: rgba(255, 255, 255, 0.5);
+            ">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 10px; height: 10px; background: rgba(255, 255, 255, 0.03); border-radius: 2px;"></div>
+                <span>Нет</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 10px; height: 10px; background: rgba(94, 92, 230, 0.4); border-radius: 2px;"></div>
+                <span>Мало</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 10px; height: 10px; background: rgba(10, 132, 255, 0.6); border-radius: 2px;"></div>
+                <span>Средне</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="width: 10px; height: 10px; background: rgba(48, 209, 88, 0.7); border-radius: 2px;"></div>
+                <span>Много (${maxValue})</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Таб: Обзор
+    function renderOverviewTab(playerData, antibot, playstyle, battles) {
+      if (!playerData) {
+        return '<div class="empty-state"><p>Нет данных статистики</p></div>';
+      }
+
+      const winRate = playerData.battles_count > 0 ? (playerData.wins / playerData.battles_count * 100) : 0;
+      const kdRatio = playerData.losses > 0 ? (playerData.wins / playerData.losses) : playerData.wins;
+
+      // Создаем тепловую карту из battles
+      const heatmapMatrix = createActivityHeatmap(battles);
+
+      return `
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Боёв</div>
+            <div class="stat-value">${formatNumber(playerData.battles_count || 0)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Винрейт</div>
+            <div class="stat-value">${formatPercent(winRate)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Побед</div>
+            <div class="stat-value">${formatNumber(playerData.wins || 0)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Поражений</div>
+            <div class="stat-value">${formatNumber(playerData.losses || 0)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Убито монстров</div>
+            <div class="stat-value">${formatNumber(playerData.kills_monsters || 0)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Убито игроков</div>
+            <div class="stat-value">${formatNumber(playerData.kills_players || 0)}</div>
+          </div>
+        </div>
+
+        ${renderActivityHeatmapSection(heatmapMatrix, battles)}
+        ${renderAntibotSection(antibot)}
+        ${renderPlaystyleSection(playstyle)}
+      `;
+    }
+
+    // Антибот секция
+    function renderAntibotSection(antibot) {
+      if (!antibot) {
+        return '<div class="antibot-section"><p>Нет данных антибота</p></div>';
+      }
+
+      const confidence = antibot.confidence || 0;
+      const isSafe = confidence < 50;
+      const isSuspicious = confidence >= 50 && confidence < 80;
+      const isDanger = confidence >= 80;
+
+      const sectionClass = isSafe ? 'safe' : (isDanger ? 'danger' : '');
+      const statusIcon = isSafe ? '🟢' : (isDanger ? '🔴' : '🟡');
+      const statusText = isSafe ? 'Нормальная активность' : (isDanger ? 'Высокий риск бота' : 'Подозрительный паттерн');
+
+      return `
+        <div class="antibot-section ${sectionClass}">
+          <div class="antibot-title">
+            <span>🤖 Антибот анализ</span>
+            <span class="badge ${isSafe ? 'badge-success' : (isDanger ? 'badge-danger' : 'badge-warning')}">
+              Confidence: ${confidence.toFixed(1)}%
+            </span>
+          </div>
+          <div class="antibot-flags">
+            <div class="antibot-flag">
+              <span class="flag-icon">${statusIcon}</span>
+              <span>${statusText}</span>
+            </div>
+            ${antibot.flags && antibot.flags.length > 0 ? antibot.flags.map(flag => `
+              <div class="antibot-flag">
+                <span class="flag-icon">⚠️</span>
+                <span>${flag}</span>
+              </div>
+            `).join('') : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Стиль игры секция (в обзоре)
+    function renderPlaystyleSection(playstyle) {
+      if (!playstyle || playstyle.detail) {
+        return `<div class="cluster-card">
+          <p>Данные стиля игры недоступны (модель не обучена)</p>
+        </div>`;
+      }
+
+      return `
+        <div class="cluster-card">
+          <div class="cluster-title">🎯 Стиль игры: ${playstyle.display_name || 'Unknown'}</div>
+          <div class="cluster-desc">
+            ${playstyle.description || 'Описание стиля игры'}<br>
+            <span style="color: var(--text-muted); font-size: 12px;">
+              Кластер #${playstyle.cluster_id} • ${playstyle.cluster_size} игроков
+            </span>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Таб: Последние бои
+    function renderBattlesTab(battles) {
+      if (!battles || !Array.isArray(battles) || battles.length === 0) {
+        return '<div class="empty-state"><p>Нет данных о боях</p></div>';
+      }
+
+      return `
+        <h3>Последние 100 боёв</h3>
+        <table style="width: 100%; margin-top: 20px;">
+          <thead>
+            <tr>
+              <th>Battle ID</th>
+              <th>Service ID</th>
+              <th>Дата/время</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${battles.slice(0, 100).map(b => `
+              <tr style="cursor: pointer;" onclick="window.open('/battle-details.html?battle_id=${b.battle_id}', '_blank')">
+                <td><a href="/battle-details.html?battle_id=${b.battle_id}" target="_blank" style="color: var(--accent-blue);">${b.battle_id}</a></td>
+                <td>${b.service_id || '—'}</td>
+                <td>${b.ts ? new Date(b.ts).toLocaleString('ru-RU') : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+    
+    // Таб: Стиль игры
+    function renderPlaystyleTab(playstyle) {
+      if (!playstyle || playstyle.detail) {
+        return '<div class="empty-state"><p>Модель не обучена</p></div>';
+      }
+
+      return `
+        <div style="display: grid; gap: 20px;">
+          <div class="stat-card" style="grid-column: 1/-1;">
+            <h3>🎯 ${playstyle.display_name || 'Unknown'}</h3>
+            <p>${playstyle.description || 'Нет описания'}</p>
+            <div style="margin-top: 12px; color: var(--text-muted); font-size: 14px;">
+              Кластер #${playstyle.cluster_id} • ${playstyle.cluster_size} игроков • Confidence: ${(playstyle.confidence * 100).toFixed(0)}%
+            </div>
+          </div>
+
+          ${playstyle.similar_players && playstyle.similar_players.length > 0 ? `
+            <div class="stat-card" style="grid-column: 1/-1;">
+              <h3>👥 Похожие игроки</h3>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+                ${playstyle.similar_players.map(p => `
+                  <span class="badge" style="cursor: pointer;" onclick="searchPlayer('${p}')">${p}</span>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${playstyle.bot_detection ? `
+            <div class="stat-card" style="grid-column: 1/-1; border-left: 4px solid ${playstyle.bot_detection.is_likely_bot ? 'var(--danger)' : 'var(--success)'};">
+              <h3>🤖 Детекция ботов</h3>
+              <div style="margin-top: 12px;">
+                <strong>Статус:</strong> ${playstyle.bot_detection.is_likely_bot ? '🔴 Вероятно бот' : '🟢 Не бот'}<br>
+                <strong>Скор:</strong> ${(playstyle.bot_detection.bot_score * 100).toFixed(0)}%<br>
+                <strong>Индикаторов:</strong> ${playstyle.bot_detection.indicators_count}<br>
+                <div style="margin-top: 12px;">
+                  ${playstyle.bot_detection.reasons.map(r => `<div class="reason-item" style="background: var(--bg-hover); padding: 8px; margin-bottom: 4px; border-radius: 4px;">${r}</div>`).join('')}
+                </div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+    
+    // Таб: Экономика
+    function renderEconomyTab(farm) {
+      if (!farm || farm.detail) {
+        return '<div class="empty-state"><p>Нет данных экономики</p></div>';
+      }
+
+      return `
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Всего ресурсов</div>
+            <div class="stat-value">${formatNumber(farm.total_resources || 0)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Часов сыграно</div>
+            <div class="stat-value">${(farm.hours_played || 0).toFixed(2)}ч</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ресурсов/час</div>
+            <div class="stat-value">${formatNumber(Math.round(farm.resources_per_hour || 0))}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Период</div>
+            <div class="stat-value">${farm.period_days || 30} дней</div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Таб: Социальное
+    function renderSocialTab(rivals, allies) {
+      const hasRivals = rivals && Array.isArray(rivals) && rivals.length > 0;
+      const hasAllies = allies && Array.isArray(allies) && allies.length > 0;
+
+      if (!hasRivals && !hasAllies) {
+        return '<div class="empty-state"><p>Нет данных о соперниках и союзниках</p></div>';
+      }
+
+      return `
+        <div style="display: grid; gap: 20px;">
+          ${hasRivals ? `
+            <div class="stat-card">
+              <h3>⚔️ Соперники (${rivals.length})</h3>
+              <div style="margin-top: 12px;">
+                ${rivals.map(r => {
+                  // API возвращает: { rival: "login", battles_against: 35 }
+                  const login = r.rival || r.rival_login || r.login || r.player_login || 'Неизвестный';
+                  const encounters = r.battles_against || r.encounters || r.encounter_count || r.battles || 0;
+                  return `
+                  <div style="padding: 8px; background: var(--bg-hover); margin-bottom: 4px; border-radius: 4px; cursor: pointer;" onclick="searchPlayer('${login}')">
+                    <strong>${login}</strong> — ${encounters} встреч
+                  </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : '<div class="empty-state"><p>Нет соперников</p></div>'}
+          
+          ${hasAllies ? `
+            <div class="stat-card">
+              <h3>🤝 Союзники (${allies.length})</h3>
+              <div style="margin-top: 12px;">
+                ${allies.map(a => {
+                  // API возвращает: { ally: "login", battles_together: 14, synergy_score: 0.65, ... }
+                  const login = a.ally || a.ally_login || a.login || a.player_login || 'Неизвестный';
+                  const encounters = a.battles_together || a.encounters || a.encounter_count || a.battles || 0;
+                  const synergy = a.synergy_text || '';
+                  const playstyle = a.ally_playstyle || '';
+                  return `
+                  <div style="padding: 8px; background: var(--bg-hover); margin-bottom: 4px; border-radius: 4px; cursor: pointer;" onclick="searchPlayer('${login}')">
+                    <div><strong>${login}</strong> — ${encounters} встреч</div>
+                    ${playstyle ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Стиль: ${playstyle}</div>` : ''}
+                    ${synergy ? `<div style="font-size: 11px; margin-top: 2px;">${synergy}</div>` : ''}
+                  </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : '<div class="empty-state"><p>Нет союзников</p></div>'}
+        </div>
+      `;
+    }
+    
+    // Переключение табов
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,74 @@
+services:
+
+  # ════════════════════════════════════════════════════════════════
+  # MOCK: db_bridge (mTLS proxy для MySQL)
+  # ════════════════════════════════════════════════════════════════
+  mock_db_bridge:
+    image: nginx:alpine
+    container_name: ${PROJECT_NAME}-mock_db_bridge
+    restart: unless-stopped
+    ports:
+      - "3307:3307"
+    volumes:
+      - ./mock_host_server/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./mock_host_server/certs:/etc/nginx/certs:ro
+    networks:
+      - host-api-network
+
+  # ════════════════════════════════════════════════════════════════
+  # MOCK: game_bridge (TCP proxy для Game Server)
+  # ════════════════════════════════════════════════════════════════
+  mock_game_bridge:
+    build:
+      context: ./game_bridge
+      dockerfile: Dockerfile
+    container_name: ${PROJECT_NAME}-mock_game_bridge
+    restart: unless-stopped
+    ports:
+      - "5191:5191"
+    networks:
+      - host-api-network
+    depends_on:
+      - game_server_mock
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ════════════════════════════════════════════════════════════════
+  # MOCK: Game Server (эмулятор)
+  # ════════════════════════════════════════════════════════════════
+  game_server_mock:
+    build:
+      context: ./game_server_mock
+      dockerfile: Dockerfile
+    container_name: ${PROJECT_NAME}-game_server_mock
+    restart: unless-stopped
+    networks:
+      - host-api-network
+    environment:
+      - MODE=ok
+      - DELAY_SEC=0.0
+    # Порт НЕ публикуется - доступ только через mock_game_bridge!
+    # expose: [ "5190" ]
+
+  # ════════════════════════════════════════════════════════════════
+  # MOCK: btl_rsyncd (rsync daemon для логов)
+  # ════════════════════════════════════════════════════════════════
+  mock_btl_rsyncd:
+    build: ./mock_host_server/rsyncd
+    container_name: ${PROJECT_NAME}-mock_btl_rsyncd
+    restart: unless-stopped
+    ports:
+      - "873:873"
+    volumes:
+      - ./mock_host_server/rsyncd/rsyncd.conf:/etc/rsyncd.conf:ro
+      - ./mock_host_server/export/btl:/srv/export/btl:ro
+    networks:
+      - host-api-network
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true
+name: ${PROJECT_NAME}

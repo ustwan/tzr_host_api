@@ -1,0 +1,165 @@
+{
+  "battle": {
+    "id": 3655950,
+    "ts": "2025-09-20T14:32:36Z",
+    "size_bytes": 56265,
+    "sha256": "be9738e45e0fc7ff4223bbbb98db7a1c22083c5e9c93b75fd80260f96ebda8cb",
+    "storage_key": "3655950.tzb",
+    "compressed": false,
+    "turns": 7,
+    "battle_type": "A",
+    "loc": {
+      "x": 6,
+      "y": 10
+    },
+    "start_ts_unix": 1758378649,
+    "players_cnt": 1,
+    "monsters_cnt": 28,
+    "entities_cnt": 29,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "Киллер-бракодел",
+      "clan": null,
+      "profession": 2,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 111206,
+      "level": 11,
+      "gender": 0,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 28,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 3440
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Gems",
+            "qty": 2
+          },
+          {
+            "name": "Organic",
+            "qty": 23
+          },
+          {
+            "name": "Radioactive materials",
+            "qty": 1
+          },
+          {
+            "name": "Silicon",
+            "qty": 1
+          },
+          {
+            "name": "Venom",
+            "qty": 36
+          }
+        ],
+        "monster_parts": [
+          {
+            "name": "Rat Brain",
+            "qty": 4
+          },
+          {
+            "name": "Rat Fang",
+            "qty": 2
+          },
+          {
+            "name": "Stich Blood",
+            "qty": 2
+          },
+          {
+            "name": "Stich Claw",
+            "qty": 4
+          },
+          {
+            "name": "Stich Meat",
+            "qty": 2
+          }
+        ],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 14,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "sti",
+      "spec": null,
+      "side": 2,
+      "count": 14,
+      "min_level": 11,
+      "max_level": 14
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Gems",
+        "qty": 2
+      },
+      {
+        "name": "Organic",
+        "qty": 23
+      },
+      {
+        "name": "Radioactive materials",
+        "qty": 1
+      },
+      {
+        "name": "Silicon",
+        "qty": 1
+      },
+      {
+        "name": "Venom",
+        "qty": 36
+      }
+    ],
+    "monster_parts": [
+      {
+        "name": "Rat Brain",
+        "qty": 4
+      },
+      {
+        "name": "Rat Fang",
+        "qty": 2
+      },
+      {
+        "name": "Stich Blood",
+        "qty": 2
+      },
+      {
+        "name": "Stich Claw",
+        "qty": 4
+      },
+      {
+        "name": "Stich Meat",
+        "qty": 2
+      }
+    ],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_3DC815938E95B3CB",
+    "cs": "blake2s8:3DC815938E95B3CB"
+  }
+}

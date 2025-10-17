@@ -1,0 +1,119 @@
+name: ${PROJECT_NAME}
+
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true
+
+services:
+  api_5:
+    container_name: host-api-service-api_5-1
+    build:
+      context: ./api_5
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+      - DB_MODE=${DB_MODE}
+      - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:-local_admin_token}
+      # БД API 5
+      - DB_API5_TEST_HOST=api_5_db
+      - DB_API5_TEST_PORT=5432
+      - DB_API5_TEST_NAME=${DB_API5_TEST_NAME:-api5_shop}
+      - DB_API5_TEST_USER=${DB_API5_TEST_USER:-api5_user}
+      - DB_API5_TEST_PASSWORD=${DB_API5_TEST_PASSWORD:-api5_pass}
+      - DB_API5_PROD_HOST=${DB_API5_PROD_HOST:-localhost}
+      - DB_API5_PROD_PORT=${DB_API5_PROD_PORT:-5432}
+      - DB_API5_PROD_NAME=${DB_API5_PROD_NAME:-api5_shop}
+      - DB_API5_PROD_USER=${DB_API5_PROD_USER:-api5_user}
+      - DB_API5_PROD_PASSWORD=${DB_API5_PROD_PASSWORD:-api5_pass}
+      # Игровой сервер (реальный IP, как в XML Workers)
+      - GAME_SERVER_HOST=${GAME_SERVER_HOST:-185.92.72.18}
+      - GAME_SERVER_PORT=${GAME_SERVER_PORT:-5190}
+      - GAME_SERVER_TIMEOUT=${GAME_SERVER_TIMEOUT:-20}
+      # Боты (Sova) - используем те же переменные что и XML Workers
+      - SOVA_MOSCOW_LOGIN=${SOVA_MOSCOW_LOGIN:-Sova Moscow}
+      - SOVA_MOSCOW_KEY=${SOVA_MOSCOW_KEY:-90659820BCEDB06F1E07F77BFB2C5948AA6D5774}
+      - SOVA_MOSCOW_ENABLED=${SOVA_MOSCOW_ENABLED:-true}
+      - SOVA_OASIS_LOGIN=${SOVA_OASIS_LOGIN:-Sova Oasis}
+      - SOVA_OASIS_KEY=${SOVA_OASIS_KEY:-90659820BCEDB06F1E07F77BFB2C5948AA6D5774}
+      - SOVA_OASIS_ENABLED=${SOVA_OASIS_ENABLED:-true}
+      - SOVA_NEVA_LOGIN=${SOVA_NEVA_LOGIN:-Sova Neva}
+      - SOVA_NEVA_KEY=${SOVA_NEVA_KEY:-90659820BCEDB06F1E07F77BFB2C5948AA6D5774}
+      - SOVA_NEVA_ENABLED=${SOVA_NEVA_ENABLED:-true}
+      # Планировщик
+      - SNAPSHOT_INTERVAL=${SNAPSHOT_INTERVAL:-3600}  # 1 час
+      - KEEPALIVE_INTERVAL=${KEEPALIVE_INTERVAL:-30}  # 30 секунд
+      - RECONNECT_DELAY=${RECONNECT_DELAY:-5}         # 5 секунд
+      # Парсинг
+      - PAGE_RETRY_ATTEMPTS=${PAGE_RETRY_ATTEMPTS:-5}
+      - PAGE_RETRY_DELAY=${PAGE_RETRY_DELAY:-2.0}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      api_5_db:
+        condition: service_healthy
+
+  api_5_db:
+    image: postgres:15
+    container_name: host-api-service-api_5_db-1
+    restart: unless-stopped
+    ports:
+      - "6013:5432"
+    environment:
+      - POSTGRES_DB=${DB_API5_TEST_NAME:-api5_shop}
+      - POSTGRES_USER=${DB_API5_TEST_USER:-api5_user}
+      - POSTGRES_PASSWORD=${DB_API5_TEST_PASSWORD:-api5_pass}
+      - TZ=${TZ}
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "work_mem=8MB"
+    volumes:
+      - api_5_data:/var/lib/postgresql/data
+    networks:
+      - host-api-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_API5_TEST_USER:-api5_user} -d ${DB_API5_TEST_NAME:-api5_shop}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api_5_migrator:
+    image: flyway/flyway:10
+    container_name: host-api-service-api_5_migrator-1
+    command: migrate
+    depends_on:
+      api_5_db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - host-api-network
+    environment:
+      FLYWAY_URL: jdbc:postgresql://api_5_db:5432/${DB_API5_TEST_NAME:-api5_shop}
+      FLYWAY_USER: ${DB_API5_TEST_USER:-api5_user}
+      FLYWAY_PASSWORD: ${DB_API5_TEST_PASSWORD:-api5_pass}
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+      FLYWAY_BASELINE_VERSION: "0"
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+    volumes:
+      - ./api_5/migrations:/flyway/sql:ro
+
+volumes:
+  api_5_data:
+    name: host-api-service-api_5_data
+
+

@@ -1,0 +1,221 @@
+{
+  "battle": {
+    "id": 3658216,
+    "ts": "2025-09-20T19:07:41Z",
+    "size_bytes": 65110,
+    "sha256": "74b7c2d0c28c0712b4b3a25f0ffc1a1358c348842079aa17519efe25c3680ffe",
+    "storage_key": "3658216.tzb",
+    "compressed": false,
+    "turns": 6,
+    "battle_type": "B",
+    "loc": {
+      "x": -40,
+      "y": -45
+    },
+    "start_ts_unix": 1758395153,
+    "players_cnt": 1,
+    "monsters_cnt": 34,
+    "entities_cnt": 35,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "A-XOJA",
+      "clan": null,
+      "profession": 2,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 42086,
+      "level": 9,
+      "gender": 0,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 34,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 4300
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Gems",
+            "qty": 1
+          },
+          {
+            "name": "Metals",
+            "qty": 1
+          },
+          {
+            "name": "Organic",
+            "qty": 32
+          },
+          {
+            "name": "Polymers",
+            "qty": 2
+          },
+          {
+            "name": "Precious metals",
+            "qty": 12
+          },
+          {
+            "name": "Radioactive materials",
+            "qty": 12
+          },
+          {
+            "name": "Silicon",
+            "qty": 14
+          },
+          {
+            "name": "Venom",
+            "qty": 55
+          }
+        ],
+        "monster_parts": [
+          {
+            "name": "Rat Brain",
+            "qty": 2
+          },
+          {
+            "name": "Rat Eyes",
+            "qty": 2
+          },
+          {
+            "name": "Rat Fang",
+            "qty": 4
+          },
+          {
+            "name": "Stich Blood",
+            "qty": 4
+          },
+          {
+            "name": "Stich Bone Marrow",
+            "qty": 4
+          },
+          {
+            "name": "Stich Claw",
+            "qty": 2
+          },
+          {
+            "name": "Stich Meat",
+            "qty": 2
+          },
+          {
+            "name": "Stich Skin",
+            "qty": 4
+          }
+        ],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 18,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "sti",
+      "spec": null,
+      "side": 2,
+      "count": 15,
+      "min_level": 11,
+      "max_level": 14
+    },
+    {
+      "kind": "sti_spec",
+      "spec": "3",
+      "side": 2,
+      "count": 1,
+      "min_level": 12,
+      "max_level": 12
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Gems",
+        "qty": 1
+      },
+      {
+        "name": "Metals",
+        "qty": 1
+      },
+      {
+        "name": "Organic",
+        "qty": 32
+      },
+      {
+        "name": "Polymers",
+        "qty": 2
+      },
+      {
+        "name": "Precious metals",
+        "qty": 12
+      },
+      {
+        "name": "Radioactive materials",
+        "qty": 12
+      },
+      {
+        "name": "Silicon",
+        "qty": 14
+      },
+      {
+        "name": "Venom",
+        "qty": 55
+      }
+    ],
+    "monster_parts": [
+      {
+        "name": "Rat Brain",
+        "qty": 2
+      },
+      {
+        "name": "Rat Eyes",
+        "qty": 2
+      },
+      {
+        "name": "Rat Fang",
+        "qty": 4
+      },
+      {
+        "name": "Stich Blood",
+        "qty": 4
+      },
+      {
+        "name": "Stich Bone Marrow",
+        "qty": 4
+      },
+      {
+        "name": "Stich Claw",
+        "qty": 2
+      },
+      {
+        "name": "Stich Meat",
+        "qty": 2
+      },
+      {
+        "name": "Stich Skin",
+        "qty": 4
+      }
+    ],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_461F09EFD001949D",
+    "cs": "blake2s8:461F09EFD001949D"
+  }
+}

@@ -1,22 +1,48 @@
-# Keys / secrets
-*.key
-*.pem
-*.crt
-*.p12
-*.der
-*.csr
-/opt/wg-easy/*.key
-wg_client/wg/*
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
 
-# Env files
+# Docker
 .env
-.env.*
-
-# Logs
+.env.secrets
 *.log
-logs/
 
-# OS / IDE
-.DS_Store
-.idea/
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Secrets
+*.key
+*.crt
+*.pem
+*/secrets/
+
+# Data
+wg_client/data/btl/raw/
+wg_client/data/btl/gz/
+*.tzb
+*.gz
+wg_client/xml/
+wg_client/mock_host_server/xml/
+
+# Models
+wg_client/api_4/models/*.pkl
+
+# Archives
+govno_archive/
+
+# Testing
+.pytest_cache/
+*.pyc
+test_*.log

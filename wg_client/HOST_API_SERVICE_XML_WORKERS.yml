@@ -1,0 +1,169 @@
+version: '3.8'
+
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true
+services:
+  # XML Worker 1 - Sova Oasis
+  xml_worker_1:
+    build:
+      context: ./xml_worker
+      dockerfile: Dockerfile
+    container_name: host-api-xml-worker-1
+    environment:
+      - WORKER_ID=1
+      - LOGIN_NAME=Sova Oasis
+      - LOGIN_KEY=90659820BCEDB06F1E07F77BFB2C5948AA6D5774
+      - PORT=9001
+      - API_MOTHER_URL=http://host-api-service-api_mother-1:8083
+      - GAME_SERVER_HOST=185.92.72.18
+      - GAME_SERVER_PORT=5190
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./data/btl/raw:/srv/btl/raw
+    networks:
+      - host-api-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # XML Worker 2 - Sova Neva
+  xml_worker_2:
+    build:
+      context: ./xml_worker
+      dockerfile: Dockerfile
+    container_name: host-api-xml-worker-2
+    environment:
+      - WORKER_ID=2
+      - LOGIN_NAME=Sova Neva
+      - LOGIN_KEY=90659820BCEDB06F1E07F77BFB2C5948AA6D5774
+      - PORT=9002
+      - API_MOTHER_URL=http://host-api-service-api_mother-1:8083
+      - GAME_SERVER_HOST=185.92.72.18
+      - GAME_SERVER_PORT=5190
+    ports:
+      - "9002:9002"
+    volumes:
+      - ./data/btl/raw:/srv/btl/raw
+    networks:
+      - host-api-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # XML Worker 3 - Sova Jerusalem
+  xml_worker_3:
+    build:
+      context: ./xml_worker
+      dockerfile: Dockerfile
+    container_name: host-api-xml-worker-3
+    environment:
+      - WORKER_ID=3
+      - LOGIN_NAME=Sova Jerusalem
+      - LOGIN_KEY=90659820BCEDB06F1E07F77BFB2C5948AA6D5774
+      - PORT=9003
+      - API_MOTHER_URL=http://host-api-service-api_mother-1:8083
+      - GAME_SERVER_HOST=185.92.72.18
+      - GAME_SERVER_PORT=5190
+    ports:
+      - "9003:9003"
+    volumes:
+      - ./data/btl/raw:/srv/btl/raw
+    networks:
+      - host-api-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # XML Worker 4 - Sova Kabul
+  xml_worker_4:
+    build:
+      context: ./xml_worker
+      dockerfile: Dockerfile
+    container_name: host-api-xml-worker-4
+    environment:
+      - WORKER_ID=4
+      - LOGIN_NAME=Sova Kabul
+      - LOGIN_KEY=90659820BCEDB06F1E07F77BFB2C5948AA6D5774
+      - PORT=9004
+      - API_MOTHER_URL=http://host-api-service-api_mother-1:8083
+      - GAME_SERVER_HOST=185.92.72.18
+      - GAME_SERVER_PORT=5190
+    ports:
+      - "9004:9004"
+    volumes:
+      - ./data/btl/raw:/srv/btl/raw
+    networks:
+      - host-api-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # XML Worker 5 - Sova SYN
+  xml_worker_5:
+    build:
+      context: ./xml_worker
+      dockerfile: Dockerfile
+    container_name: host-api-xml-worker-5
+    environment:
+      - WORKER_ID=5
+      - LOGIN_NAME=Sova SYN
+      - LOGIN_KEY=90659820BCEDB06F1E07F77BFB2C5948AA6D5774
+      - PORT=9005
+      - API_MOTHER_URL=http://host-api-service-api_mother-1:8083
+      - GAME_SERVER_HOST=185.92.72.18
+      - GAME_SERVER_PORT=5190
+    ports:
+      - "9005:9005"
+    volumes:
+      - ./data/btl/raw:/srv/btl/raw
+    networks:
+      - host-api-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # XML Worker 6 - Sova Moscow
+  xml_worker_6:
+    build:
+      context: ./xml_worker
+      dockerfile: Dockerfile
+    container_name: host-api-xml-worker-6
+    environment:
+      - WORKER_ID=6
+      - LOGIN_NAME=Sova Moscow
+      - LOGIN_KEY=90659820BCEDB06F1E07F77BFB2C5948AA6D5774
+      - PORT=9006
+      - API_MOTHER_URL=http://host-api-service-api_mother-1:8083
+      - GAME_SERVER_HOST=185.92.72.18
+      - GAME_SERVER_PORT=5190
+    ports:
+      - "9006:9006"
+    volumes:
+      - ./data/btl/raw:/srv/btl/raw
+    networks:
+      - host-api-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+

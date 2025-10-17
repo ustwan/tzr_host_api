@@ -1,0 +1,91 @@
+{
+  "battle": {
+    "id": 3655318,
+    "ts": "2025-09-20T12:57:26Z",
+    "size_bytes": 56564,
+    "sha256": "b398e796a2bfe3be42a8fe6d5052cb70fcf33d8be682a1029cb3e5aaec27c970",
+    "storage_key": "3655318.tzb",
+    "compressed": false,
+    "turns": 7,
+    "battle_type": "D",
+    "loc": {
+      "x": -1,
+      "y": -2
+    },
+    "start_ts_unix": 1758372931,
+    "players_cnt": 1,
+    "monsters_cnt": 34,
+    "entities_cnt": 35,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "akustika",
+      "clan": null,
+      "profession": 3,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 172704,
+      "level": 11,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 34,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 5180
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Metals",
+            "qty": 46
+          },
+          {
+            "name": "Silicon",
+            "qty": 54
+          }
+        ],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 34,
+      "min_level": 14,
+      "max_level": 17
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Metals",
+        "qty": 46
+      },
+      {
+        "name": "Silicon",
+        "qty": 54
+      }
+    ],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_1934D2B354548A95",
+    "cs": "blake2s8:1934D2B354548A95"
+  }
+}

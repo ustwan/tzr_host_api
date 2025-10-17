@@ -1,0 +1,63 @@
+services:
+  # Override to run locally without wg_vpn
+  api_1:
+    container_name: api_1_local
+    network_mode: ""
+    networks:
+      - backnet
+    depends_on: {}
+    # optional: expose locally if needed
+    ports:
+      - "8081:8081"
+
+  api_2:
+    container_name: api_2_local
+    network_mode: ""
+    networks:
+      - backnet
+    depends_on: {}
+    ports:
+      - "8082:8082"
+
+  api_4:
+    container_name: api_4_local
+    network_mode: ""
+    networks:
+      - backnet
+    depends_on: {}
+    ports:
+      - "8084:8084"
+
+  api_father:
+    container_name: api_father_local
+    networks:
+      - backnet
+      - dbnet
+    depends_on: {}
+    # expose API_FATHER locally
+    ports:
+      - "9000:9000"
+
+  traefik:
+    container_name: traefik_local
+    network_mode: ""
+    # skip traefik locally (ports may conflict), but define minimal to avoid errors
+    profiles: [disabled]
+    depends_on: {}
+
+  wg_vpn:
+    container_name: wg_vpn_local
+    # Local stub to satisfy dependencies without pulling WireGuard
+    image: alpine:3.20
+    command: ["sh", "-lc", "sleep infinity"]
+    networks:
+      - apinet
+      - backnet
+
+networks:
+  backnet:
+    external: false
+  dbnet:
+    external: false
+
+

@@ -1,0 +1,75 @@
+name: ${PROJECT_NAME}
+
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true
+services:
+
+  db:
+    image: mysql:8.0.42
+    restart: unless-stopped
+    ports:
+      - "6006:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_TEST_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_TEST_NAME}
+      MYSQL_USER: ${DB_TEST_USER}
+      MYSQL_PASSWORD: ${DB_TEST_PASSWORD}
+    command:
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_0900_ai_ci"
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - host-api-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+
+  api_4_db:
+    image: postgres:15
+    restart: unless-stopped
+    ports:
+      - "6012:5432"
+    environment:
+      - POSTGRES_DB=${DB_API4_TEST_NAME:-api4_battles}
+      - POSTGRES_USER=${DB_API4_TEST_USER:-api4_user}
+      - POSTGRES_PASSWORD=${DB_API4_TEST_PASSWORD:-api4_pass}
+      - TZ=${TZ}
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=300"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "work_mem=8MB"
+    volumes:
+      - api_4_data:/var/lib/postgresql/data
+    networks:
+      - host-api-network
+  migrator:
+    image: flyway/flyway:10
+    depends_on: [ db ]
+    restart: on-failure
+    networks:
+      - host-api-network
+    environment:
+      FLYWAY_URL: jdbc:mysql://db:${DB_TEST_PORT}/${DB_TEST_NAME}?allowPublicKeyRetrieval=true&useSSL=false
+      FLYWAY_USER: ${DB_TEST_USER}
+      FLYWAY_PASSWORD: ${DB_TEST_PASSWORD}
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+      FLYWAY_BASELINE_VERSION: "0"
+    volumes:
+      - ./db/migrations:/flyway/sql:ro
+
+volumes:
+  dbdata:
+  api_4_data:

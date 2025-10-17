@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WG_HUB — Панель визуализации</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background: rgba(28, 28, 30, 0.8);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    header .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .logo-icon {
+      font-size: 32px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(58, 58, 60, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-full);
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s ease-in-out infinite;
+      box-shadow: 0 0 8px rgba(48, 209, 88, 0.6);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    main {
+      flex: 1;
+      padding: 40px 0;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .hero h1 {
+      font-size: 2.5em;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .hero p {
+      font-size: 1.125em;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .dashboards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-top: 32px;
+    }
+
+    .dashboard-card {
+      position: relative;
+      background: var(--bg-secondary);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: var(--transition);
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+    }
+
+    .dashboard-card:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--border-light);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .dashboard-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .dashboard-title {
+      font-size: 1.375em;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .dashboard-desc {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .dashboard-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .dashboard-tag {
+      padding: 4px 10px;
+      background: var(--bg-hover);
+      border-radius: var(--radius-sm);
+    }
+
+    footer {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 24px 0;
+      margin-top: auto;
+    }
+
+    footer .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .quick-search {
+      max-width: 500px;
+      margin: 32px auto 0;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 20px;
+      padding-left: 48px;
+      font-size: 16px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-full);
+      position: relative;
+    }
+
+    .search-wrapper {
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 20px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo">
+        <span class="logo-icon">📊</span>
+        <div>
+          <div>WG_HUB</div>
+          <div style="font-size: 12px; font-weight: 400; opacity: 0.8;">Панель визуализации</div>
+        </div>
+      </div>
+      <div class="status">
+        <span class="status-indicator"></span>
+        <span id="api-status">Проверка API...</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="hero">
+        <h1>Аналитика и мониторинг</h1>
+        <p>
+          Интерактивные дашборды для визуализации игровых данных, 
+          статистики игроков, антибот-мониторинга и ML-аналитики
+        </p>
+        
+        <div class="quick-search">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input 
+              type="search" 
+              class="search-input" 
+              id="quick-search" 
+              placeholder="Быстрый поиск игрока по нику..."
+              autocomplete="off"
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboards">
+        <!-- Heatmap -->
+        <a href="/heatmap.html" class="dashboard-card">
+          <div class="dashboard-icon">🗺️</div>
+          <div class="dashboard-title">Тепловая карта • Редактор & Аналитика</div>
+          <div class="dashboard-desc">
+            Объединённая страница: Редактор локаций (купола, фарм-зоны) + 
+            Аналитические тепловые карты (Analytics, PvE, PvP). 
+            Интерактивная карта мира с переключением режимов.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">Canvas</span>
+            <span class="dashboard-tag">Analytics</span>
+            <span class="dashboard-tag">2-in-1</span>
+          </div>
+        </a>
+
+        <!-- Players -->
+        <a href="/players.html" class="dashboard-card">
+          <div class="dashboard-icon">👤</div>
+          <div class="dashboard-title">Поиск игроков</div>
+          <div class="dashboard-desc">
+            Поиск по нику, топ-20 по метрикам (боёв, убийств, PvE), 
+            поиск по профессиям (0-17), детальная статистика (5 вкладок).
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">Stats</span>
+            <span class="dashboard-tag">Professions</span>
+            <span class="dashboard-tag">5 tabs</span>
+          </div>
+        </a>
+
+        <!-- Battle Search -->
+        <a href="/battle-search.html" class="dashboard-card">
+          <div class="dashboard-icon">🔍</div>
+          <div class="dashboard-title">Поиск боёв</div>
+          <div class="dashboard-desc">
+            Расширенный поиск боёв по игроку, клану, монстру, дате, типу боя. 
+            Сводка боя: монстры, участники, урон, добыча.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">Search</span>
+            <span class="dashboard-tag">Filters</span>
+            <span class="dashboard-tag">Summary</span>
+          </div>
+        </a>
+
+        <!-- Antibot -->
+        <a href="/antibot.html" class="dashboard-card">
+          <div class="dashboard-icon">🤖</div>
+          <div class="dashboard-title">Антибот мониторинг</div>
+          <div class="dashboard-desc">
+            Real-time мониторинг проверок на ботов через SSE. 
+            Таблица последних проверок, топ подозрительных, статистика 24ч.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">SSE</span>
+            <span class="dashboard-tag">Real-time</span>
+            <span class="dashboard-tag">Security</span>
+          </div>
+        </a>
+
+        <!-- ML Clusters -->
+        <a href="/ml-clusters.html" class="dashboard-card">
+          <div class="dashboard-icon">🎯</div>
+          <div class="dashboard-title">ML Кластеры</div>
+          <div class="dashboard-desc">
+            Визуализация K-Means кластеров стилей игры. 
+            3D scatter plot, статистика кластеров, поиск похожих игроков.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">Plotly.js</span>
+            <span class="dashboard-tag">K-Means</span>
+            <span class="dashboard-tag">3D</span>
+          </div>
+        </a>
+
+        <!-- Clan Control -->
+        <a href="/analytics-clan-control.html" class="dashboard-card">
+          <div class="dashboard-icon">🗺️</div>
+          <div class="dashboard-title">Контроль кланов</div>
+          <div class="dashboard-desc">
+            Аналитика контроля территорий кланами за последние 30 дней. 
+            Топ кланов, контролируемые локации, винрейт.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">Analytics</span>
+            <span class="dashboard-tag">Clans</span>
+          </div>
+        </a>
+
+        <!-- Peak Hours -->
+        <a href="/analytics-peak-hours.html" class="dashboard-card">
+          <div class="dashboard-icon">⏰</div>
+          <div class="dashboard-title">Пиковые часы</div>
+          <div class="dashboard-desc">
+            Визуализация активности игроков по часам и дням недели. 
+            Графики, тепловая карта, activity heatmap, инсайты.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">Analytics</span>
+            <span class="dashboard-tag">Time</span>
+          </div>
+        </a>
+
+        <!-- PvP ELO -->
+        <a href="/analytics-pvp-elo.html" class="dashboard-card">
+          <div class="dashboard-icon">⚔️</div>
+          <div class="dashboard-title">PvP ELO и Профессии</div>
+          <div class="dashboard-desc">
+            Таблица лидеров PvP ELO рейтинга и распределение игроков по профессиям. 
+            Фильтры по датам и профессиям.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">PvP</span>
+            <span class="dashboard-tag">Ratings</span>
+          </div>
+        </a>
+
+        <!-- Churn Prediction -->
+        <a href="/analytics-churn.html" class="dashboard-card">
+          <div class="dashboard-icon">⚠️</div>
+          <div class="dashboard-title">Предсказание оттока</div>
+          <div class="dashboard-desc">
+            ML-предсказание риска ухода игроков. Таблица игроков в группе риска, 
+            факторы риска, распределение по уровням.
+          </div>
+          <div class="dashboard-meta">
+            <span class="dashboard-tag">ML</span>
+            <span class="dashboard-tag">Predictions</span>
+          </div>
+        </a>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div>&copy; 2025 WG_HUB. Все права защищены.</div>
+      <div class="footer-links">
+        <a href="https://github.com" target="_blank">GitHub</a>
+        <a href="/health">Health Check</a>
+        <a href="#" id="api-info">API Info</a>
+      </div>
+    </div>
+  </footer>
+
+  <div id="error-container"></div>
+  
+  <div id="loading-container" class="loading-container flex-center">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <script src="/assets/js/api-client.js"></script>
+  <script>
+    // Проверка статуса API при загрузке
+    async function checkAPIStatus() {
+      const statusEl = document.getElementById('api-status');
+      try {
+        const result = await api.healthCheck();
+        if (result.success) {
+          statusEl.textContent = 'API Online';
+          statusEl.parentElement.querySelector('.status-indicator').style.background = 'var(--success)';
+        } else {
+          throw new Error('API недоступен');
+        }
+      } catch (error) {
+        statusEl.textContent = 'API Offline';
+        statusEl.parentElement.querySelector('.status-indicator').style.background = 'var(--danger)';
+        console.error('API health check failed:', error);
+      }
+    }
+
+    // Быстрый поиск игрока
+    const quickSearchInput = document.getElementById('quick-search');
+    if (quickSearchInput) {
+      quickSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const nickname = e.target.value.trim();
+          if (nickname) {
+            window.location.href = `/players.html?search=${encodeURIComponent(nickname)}`;
+          }
+        }
+      });
+    }
+
+    // API Info
+    document.getElementById('api-info')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const result = await api.getSystemStats();
+        alert(JSON.stringify(result.data, null, 2));
+      } catch (error) {
+        alert('Ошибка получения статистики API');
+      }
+    });
+
+    // Инициализация
+    checkAPIStatus();
+  </script>
+</body>
+</html>
+

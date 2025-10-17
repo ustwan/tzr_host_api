@@ -1,0 +1,479 @@
+{
+  "tokenToSprite": {
+    "E": "DefineSprite_14/1.png",
+    "B": "DefineSprite_14/2.png",
+    "C": "DefineSprite_14/4.png",
+    "P": "DefineSprite_185_C80_/1.png",
+    "q": "DefineSprite_452_A113_/6.png",
+    "Q": "DefineSprite_324_A81_/3.png",
+    "V": "DefineSprite_298_A86_/4.png",
+    "t": "DefineSprite_14/6.png",
+    "Z": "DefineSprite_67_A90_/8.png",
+    "e": "DefineSprite_503_A101_/9.png",
+    "X": "DefineSprite_298_A86_/1.png",
+    "R": "DefineSprite_315_A82_/1.png",
+    "a": "DefineSprite_523_A97_/7.png",
+    "T": "DefineSprite_303_A84_/4.png",
+    "u": "DefineSprite_429_A117_/3.png",
+    "m": "DefineSprite_465_A109_/1.png",
+    "k": "DefineSprite_457_A111_/2.png",
+    "c": "DefineSprite_513_A99_/1.png",
+    "f": "DefineSprite_498_A102_/1.png",
+    "s": "DefineSprite_439_A115_/3.png",
+    "U": "DefineSprite_449_A85_/3.png",
+    "Y": "DefineSprite_71_A89_/1.png",
+    "S": "DefineSprite_308_A83_/2.png",
+    "n": "DefineSprite_457_A111_/2.png",
+    "i": "DefineSprite_14/32.png",
+    "W": "DefineSprite_298_A86_/1.png",
+    "b": "DefineSprite_518_A98_/1.png",
+    "K": "DefineSprite_14/5.png",
+    "h": "DefineSprite_488_A104_/7.png",
+    "j": "DefineSprite_478_A106_/1.png",
+    "F": "DefineSprite_14/37.png",
+    "O": "DefineSprite_14/9.png",
+    "I": "DefineSprite_14/4.png",
+    "G": "DefineSprite_14/38.png",
+    "L": "DefineSprite_14/6.png",
+    "g": "DefineSprite_493_A103_/1.png",
+    "d": "DefineSprite_508_A100_/1.png",
+    "D": "DefineSprite_14/35.png",
+    "A": "DefineSprite_14/32.png"
+  },
+  "tokenProps": {
+    "q": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "U": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "Q": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "k": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "R": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "S": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "B": {
+      "passable": true,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "f": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "j": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "b": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "P": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "c": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "a": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "h": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "T": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "n": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "e": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "X": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "W": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "s": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "u": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "V": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "d": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "m": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "Z": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    },
+    "Y": {
+      "passable": false,
+      "hp": null,
+      "shootThrough": null,
+      "coversLegs": null,
+      "lineOfSight": null,
+      "isWall": null
+    }
+  },
+  "tokenVisual": {
+    "U": {
+      "center": false,
+      "offsetX": 8,
+      "offsetY": -12,
+      "scaleX": 1.1,
+      "scaleY": 2.2,
+      "z": 5
+    },
+    "C": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "z": 5
+    },
+    "Q": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": -3,
+      "scaleX": 1.1,
+      "scaleY": 1.6,
+      "z": 6
+    },
+    "P": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": -3,
+      "scaleX": 1,
+      "scaleY": 1.5,
+      "z": 5
+    },
+    "R": {
+      "center": false,
+      "offsetX": 8,
+      "offsetY": -30,
+      "scaleX": 2.2,
+      "scaleY": 3.3,
+      "z": 7
+    },
+    "q": {
+      "center": false,
+      "offsetX": 7,
+      "offsetY": -9,
+      "scaleX": 1.2,
+      "scaleY": 2.4,
+      "z": 5
+    },
+    "S": {
+      "center": false,
+      "offsetX": 10,
+      "offsetY": -12,
+      "scaleX": 1.4,
+      "scaleY": 2.2,
+      "z": 5
+    },
+    "k": {
+      "center": false,
+      "offsetX": 13,
+      "offsetY": -17,
+      "scaleX": 1.6,
+      "scaleY": 1.9,
+      "z": 5
+    },
+    "c": {
+      "center": false,
+      "offsetX": 8,
+      "offsetY": -13,
+      "scaleX": 1.5,
+      "scaleY": 2,
+      "z": 5
+    },
+    "f": {
+      "center": false,
+      "offsetX": 9,
+      "offsetY": -8,
+      "scaleX": 1.2,
+      "scaleY": 2,
+      "z": 5
+    },
+    "b": {
+      "center": false,
+      "offsetX": 12,
+      "offsetY": -11,
+      "scaleX": 1.3,
+      "scaleY": 2,
+      "z": 5
+    },
+    "j": {
+      "center": false,
+      "offsetX": 10,
+      "offsetY": -10,
+      "scaleX": 1.4,
+      "scaleY": 2.4,
+      "z": 5
+    },
+    "a": {
+      "center": false,
+      "offsetX": 12,
+      "offsetY": -19,
+      "scaleX": 1.4,
+      "scaleY": 2.2,
+      "z": 5
+    },
+    "h": {
+      "center": false,
+      "offsetX": 4,
+      "offsetY": -12,
+      "scaleX": 1.3,
+      "scaleY": 2.1,
+      "z": 5
+    },
+    "T": {
+      "center": false,
+      "offsetX": 12,
+      "offsetY": -15,
+      "scaleX": 1.8,
+      "scaleY": 2,
+      "z": 9
+    },
+    "n": {
+      "center": false,
+      "offsetX": 13,
+      "offsetY": -17,
+      "scaleX": 1.6,
+      "scaleY": 1.9,
+      "z": 5
+    },
+    "e": {
+      "center": false,
+      "offsetX": 16,
+      "offsetY": -11,
+      "scaleX": 1.5,
+      "scaleY": 2.4,
+      "z": 5
+    },
+    "g": {
+      "center": false,
+      "offsetX": 11,
+      "offsetY": -13,
+      "scaleX": 1.1,
+      "scaleY": 2.2,
+      "z": 5
+    },
+    "W": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": -9,
+      "scaleX": 0.9,
+      "scaleY": 1.5,
+      "z": 5
+    },
+    "X": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": -9,
+      "scaleX": 0.9,
+      "scaleY": 1.5,
+      "z": 5
+    },
+    "s": {
+      "center": false,
+      "offsetX": 4,
+      "offsetY": -17,
+      "scaleX": 1.3,
+      "scaleY": 2.1,
+      "z": 5
+    },
+    "u": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": -18,
+      "scaleX": 1.1,
+      "scaleY": 2.4,
+      "z": 5
+    },
+    "V": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": -9,
+      "scaleX": 0.9,
+      "scaleY": 1.5,
+      "z": 5
+    },
+    "A": {
+      "center": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "z": 5
+    },
+    "d": {
+      "center": false,
+      "offsetX": 15,
+      "offsetY": -14,
+      "scaleX": 1.4,
+      "scaleY": 2.2,
+      "z": 5
+    },
+    "m": {
+      "center": false,
+      "offsetX": 11,
+      "offsetY": -12,
+      "scaleX": 1.4,
+      "scaleY": 2,
+      "z": 5
+    },
+    "Z": {
+      "center": false,
+      "offsetX": 2,
+      "offsetY": -6,
+      "scaleX": 1.8,
+      "scaleY": 2.3,
+      "z": 5
+    },
+    "Y": {
+      "center": false,
+      "offsetX": 4,
+      "offsetY": -18,
+      "scaleX": 1,
+      "scaleY": 1.9,
+      "z": 5
+    }
+  }
+}

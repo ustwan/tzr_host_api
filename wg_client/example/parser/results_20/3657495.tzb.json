@@ -1,0 +1,83 @@
+{
+  "battle": {
+    "id": 3657495,
+    "ts": "2025-09-20T17:27:27Z",
+    "size_bytes": 29015,
+    "sha256": "87737b2e502f73738db3fb3f1a15a538cbb70db3c0a60fe704214ff49f5898ba",
+    "storage_key": "3657495.tzb",
+    "compressed": false,
+    "turns": 9,
+    "battle_type": "A",
+    "loc": {
+      "x": 3,
+      "y": -2
+    },
+    "start_ts_unix": 1758389123,
+    "players_cnt": 1,
+    "monsters_cnt": 17,
+    "entities_cnt": 18,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "Возный",
+      "clan": null,
+      "profession": 2,
+      "side": 1,
+      "rank_points": 2.8,
+      "pve_points": 161386,
+      "level": 12,
+      "gender": 0,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 17,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 1720
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Organic",
+            "qty": 2
+          }
+        ],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "scr",
+      "spec": null,
+      "side": 2,
+      "count": 17,
+      "min_level": 3,
+      "max_level": 8
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Organic",
+        "qty": 2
+      }
+    ],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_9CB127D5CE850418",
+    "cs": "blake2s8:9CB127D5CE850418"
+  }
+}

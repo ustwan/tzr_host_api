@@ -1,0 +1,148 @@
+{
+  "battle": {
+    "id": 2182328,
+    "ts": "2025-10-02T13:24:12Z",
+    "size_bytes": 14752,
+    "sha256": "c2d686e5b0c13ea460ffb1dd11bafc7a40fb0819054e180bfeaeb593931e7a22",
+    "storage_key": "2182328.tzb",
+    "compressed": false,
+    "turns": 7,
+    "battle_type": "C",
+    "loc": {
+      "x": -1,
+      "y": 1
+    },
+    "start_ts_unix": 1759411315,
+    "players_cnt": 2,
+    "monsters_cnt": 0,
+    "entities_cnt": 2,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "test102",
+      "clan": "SMArt",
+      "profession": 5,
+      "side": 2,
+      "rank_points": 0.0,
+      "pve_points": 8000000,
+      "level": 20,
+      "gender": 0,
+      "survived": 0,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 0,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 0
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [],
+        "monster_parts": [],
+        "other": []
+      }
+    },
+    {
+      "login": "test101",
+      "clan": "SMArt",
+      "profession": 4,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 8000000,
+      "level": 20,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 0,
+        "players": 1
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 0
+        },
+        "players": {
+          "HP": 445,
+          "piercing": 321
+        }
+      },
+      "loot": {
+        "resources": [],
+        "monster_parts": [],
+        "other": [
+          {
+            "item_id": null,
+            "item_name": "AntiHallucinogen",
+            "qty": 120
+          },
+          {
+            "item_id": null,
+            "item_name": "Antidote",
+            "qty": 414
+          },
+          {
+            "item_id": null,
+            "item_name": "Fog-Remover",
+            "qty": 364
+          },
+          {
+            "item_id": null,
+            "item_name": "Magic Pills - Well",
+            "qty": 106
+          },
+          {
+            "item_id": null,
+            "item_name": "Thermoplastic",
+            "qty": 60
+          }
+        ]
+      }
+    }
+  ],
+  "monsters": [],
+  "loot_total": {
+    "resources": [],
+    "monster_parts": [],
+    "other": [
+      {
+        "item_id": null,
+        "item_name": "AntiHallucinogen",
+        "qty": 120
+      },
+      {
+        "item_id": null,
+        "item_name": "Antidote",
+        "qty": 414
+      },
+      {
+        "item_id": null,
+        "item_name": "Fog-Remover",
+        "qty": 364
+      },
+      {
+        "item_id": null,
+        "item_name": "Magic Pills - Well",
+        "qty": 106
+      },
+      {
+        "item_id": null,
+        "item_name": "Thermoplastic",
+        "qty": 60
+      }
+    ]
+  },
+  "map_patch": {
+    "i": "m_38DEBB295AB0AC18",
+    "cs": "blake2s8:38DEBB295AB0AC18"
+  }
+}

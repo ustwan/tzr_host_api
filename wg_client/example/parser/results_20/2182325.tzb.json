@@ -1,0 +1,105 @@
+{
+  "battle": {
+    "id": 2182325,
+    "ts": "2025-10-02T11:39:00Z",
+    "size_bytes": 18239,
+    "sha256": "d5c10729dce27355580e06e33c79c3e26cdd056a3b12b885cf582243efe50fe6",
+    "storage_key": "2182325.tzb",
+    "compressed": false,
+    "turns": 12,
+    "battle_type": "A",
+    "loc": {
+      "x": -1,
+      "y": 1
+    },
+    "start_ts_unix": 1759405016,
+    "players_cnt": 2,
+    "monsters_cnt": 1,
+    "entities_cnt": 3,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "test102",
+      "clan": "SMArt",
+      "profession": 5,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 8000000,
+      "level": 20,
+      "gender": 0,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 1,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 10
+        },
+        "players": {
+          "HP": 31
+        }
+      },
+      "loot": {
+        "resources": [],
+        "monster_parts": [],
+        "other": []
+      }
+    },
+    {
+      "login": "test101",
+      "clan": "SMArt",
+      "profession": 4,
+      "side": 3,
+      "rank_points": 0.0,
+      "pve_points": 8000000,
+      "level": 20,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 1,
+        "turn": 3
+      },
+      "kills": {
+        "monsters": 0,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 0
+        },
+        "players": {
+          "HP": 84
+        }
+      },
+      "loot": {
+        "resources": [],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 1,
+      "min_level": 1,
+      "max_level": 1
+    }
+  ],
+  "loot_total": {
+    "resources": [],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_873BE910E75273C9",
+    "cs": "blake2s8:873BE910E75273C9"
+  }
+}

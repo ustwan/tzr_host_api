@@ -1,0 +1,39 @@
+/* Темная тема для Swagger UI */
+body {
+    background-color: #1a1a1a !important;
+    color: #e0e0e0 !important;
+}
+
+.swagger-ui {
+    filter: invert(88%) hue-rotate(180deg);
+}
+
+.swagger-ui .microlight {
+    filter: invert(100%) hue-rotate(180deg);
+}
+
+.swagger-ui img {
+    filter: invert(100%) hue-rotate(180deg);
+}
+
+.swagger-ui .opblock-tag {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+}
+
+.swagger-ui .opblock {
+    background-color: #252525 !important;
+    border-color: #444 !important;
+}
+
+.swagger-ui .opblock-summary-method {
+    background-color: #333 !important;
+}
+
+.swagger-ui .btn.execute {
+    background-color: #4a9eff !important;
+    color: white !important;
+}
+
+
+

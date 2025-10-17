@@ -1,0 +1,50 @@
+name: ${PROJECT_NAME}
+
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true
+services:
+  api_4:
+    container_name: host-api-service-api_4-1
+    build:
+      context: .
+      dockerfile: ./api_4/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+      - LOGS_BASE=${LOGS_BASE}
+      - DB_MODE=${DB_MODE}
+      - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:-local_admin_token}
+      - DB_API4_TEST_HOST=api_4_db
+      - DB_API4_TEST_PORT=5432
+      - DB_API4_TEST_NAME=${DB_API4_TEST_NAME:-api4_battles}
+      - DB_API4_TEST_USER=${DB_API4_TEST_USER:-api4_user}
+      # XML Sync настройки (по умолчанию)
+      - SYNC_MODE=xml
+      - ENABLE_XML_SYNC_ON_START=true
+      - XML_SYNC_BATCH_SIZE=1000
+      - AUTO_APPLY_MIGRATIONS=true
+      - XML_SYNC_INTERVAL=0
+      - DB_API4_TEST_PASSWORD=${DB_API4_TEST_PASSWORD:-api4_pass}
+      - DB_API4_PROD_HOST=${DB_API4_PROD_HOST:-localhost}
+      - DB_API4_PROD_PORT=${DB_API4_PROD_PORT:-5432}
+      - DB_API4_PROD_NAME=${DB_API4_PROD_NAME:-api4_battles}
+      - DB_API4_PROD_USER=${DB_API4_PROD_USER:-api4_user}
+      - DB_API4_PROD_PASSWORD=${DB_API4_PROD_PASSWORD:-api4_pass}
+      - BATCH_SIZE=${BATCH_SIZE:-100}
+      - MAX_WORKERS=${MAX_WORKERS:-4}
+      - RETRY_ATTEMPTS=${RETRY_ATTEMPTS:-3}
+      - RETRY_DELAY=${RETRY_DELAY:-1.0}
+    volumes:
+      - ./data/btl:/srv/btl:rw
+      - ./example:/app/example:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

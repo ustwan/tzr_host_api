@@ -1,0 +1,148 @@
+{
+  "battle": {
+    "id": 3655407,
+    "ts": "2025-09-20T13:11:05Z",
+    "size_bytes": 66115,
+    "sha256": "4d129454a9ccae8fbf76a0a9f4e60c4a2ebcd0e874ecca3c32433c4c5abb3c4a",
+    "storage_key": "3655407.tzb",
+    "compressed": false,
+    "turns": 9,
+    "battle_type": "D",
+    "loc": {
+      "x": -1,
+      "y": -2
+    },
+    "start_ts_unix": 1758373735,
+    "players_cnt": 1,
+    "monsters_cnt": 35,
+    "entities_cnt": 36,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "akustika",
+      "clan": null,
+      "profession": 3,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 172973,
+      "level": 11,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 35,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 6040,
+          "critical": 1002
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Gems",
+            "qty": 36
+          },
+          {
+            "name": "Metals",
+            "qty": 56
+          },
+          {
+            "name": "Organic",
+            "qty": 72
+          },
+          {
+            "name": "Polymers",
+            "qty": 90
+          },
+          {
+            "name": "Precious metals",
+            "qty": 1
+          },
+          {
+            "name": "Radioactive materials",
+            "qty": 90
+          },
+          {
+            "name": "Silicon",
+            "qty": 126
+          },
+          {
+            "name": "Venom",
+            "qty": 36
+          }
+        ],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 34,
+      "min_level": 15,
+      "max_level": 18
+    },
+    {
+      "kind": "rat_spec",
+      "spec": "5",
+      "side": 2,
+      "count": 1,
+      "min_level": 18,
+      "max_level": 18
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Gems",
+        "qty": 36
+      },
+      {
+        "name": "Metals",
+        "qty": 56
+      },
+      {
+        "name": "Organic",
+        "qty": 72
+      },
+      {
+        "name": "Polymers",
+        "qty": 90
+      },
+      {
+        "name": "Precious metals",
+        "qty": 1
+      },
+      {
+        "name": "Radioactive materials",
+        "qty": 90
+      },
+      {
+        "name": "Silicon",
+        "qty": 126
+      },
+      {
+        "name": "Venom",
+        "qty": 36
+      }
+    ],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_5F63F0B54F3F3DED",
+    "cs": "blake2s8:5F63F0B54F3F3DED"
+  }
+}

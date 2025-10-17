@@ -1,0 +1,44 @@
+services:
+  api_father:
+    build:
+      context: .
+      dockerfile: ./api_father/Dockerfile
+    depends_on: []
+    restart: unless-stopped
+    ports:
+      - "8080:9000"
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+      - REDIS_URL=${REDIS_URL}
+      - QUEUE_REQUESTS=${QUEUE_REQUESTS}
+      - QUEUE_EVENTS=${QUEUE_EVENTS}
+      - DB_MODE=${DB_MODE}
+      - DB_TEST_HOST=${DB_TEST_HOST}
+      - DB_TEST_PORT=${DB_TEST_PORT}
+      - DB_TEST_NAME=${DB_TEST_NAME}
+      - DB_TEST_USER=${DB_TEST_USER}
+      - DB_TEST_PASSWORD=${DB_TEST_PASSWORD}
+      - DB_PROD_HOST=${DB_PROD_HOST}
+      - DB_PROD_PORT=${DB_PROD_PORT}
+      - DB_PROD_NAME=${DB_PROD_NAME}
+      - DB_PROD_USER=${DB_PROD_USER}
+      - DB_PROD_PASSWORD=${DB_PROD_PASSWORD}
+      - GAME_SERVER_MODE=${GAME_SERVER_MODE}
+      - GAME_SERVER_TEST_HOST=${GAME_SERVER_TEST_HOST}
+      - GAME_SERVER_TEST_PORT=${GAME_SERVER_TEST_PORT}
+      - GAME_SERVER_PROD_HOST=${GAME_SERVER_PROD_HOST}
+      - GAME_SERVER_PROD_PORT=${GAME_SERVER_PROD_PORT}
+      - TELEGRAM_BOT_TOKEN=8303561821:AAHugQ6f0rzkRZfGhXxJVxIWGgTaQOSsa3M
+      - TELEGRAM_REQUIRED_GROUP_ID=-1002325340567
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/internal/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true

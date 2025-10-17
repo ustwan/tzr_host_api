@@ -1,0 +1,1168 @@
+from typing import Optional, Any, Dict, List
+import os
+from datetime import datetime
+
+from fastapi import APIRouter, HTTPException, Path, Query, Depends, UploadFile, File
+
+from app.usecases.get_battle import GetBattleUseCase
+from app.usecases.list_battles import ListBattlesUseCase
+from app.usecases.search_battles import SearchBattlesUseCase
+from app.usecases.sync_logs import SyncLogsUseCase
+from app.usecases.analytics import (
+    PlayerAnalyticsUseCase, ClanAnalyticsUseCase, ResourceAnalyticsUseCase, MonsterAnalyticsUseCase, GeneralStatsUseCase
+)
+from app.usecases.admin_logs import AdminLogsUseCase
+from app.domain.mappers import map_domain_battles_to_summary
+from fastapi.responses import Response
+from app.adapters.http_mother_client import HttpMotherClient
+from app.database import BattleDatabase
+
+
+def build_router(
+    *,
+    get_battle_uc: GetBattleUseCase,
+    list_battles_uc: ListBattlesUseCase,
+    search_battles_uc: SearchBattlesUseCase,
+    sync_logs_uc: SyncLogsUseCase,
+    player_analytics_uc: PlayerAnalyticsUseCase,
+    clan_analytics_uc: ClanAnalyticsUseCase,
+    resource_analytics_uc: ResourceAnalyticsUseCase,
+    monster_analytics_uc: MonsterAnalyticsUseCase,
+    general_stats_uc: GeneralStatsUseCase,
+    admin_logs_uc: AdminLogsUseCase,
+    require_admin_token,
+) -> APIRouter:
+    router = APIRouter()
+
+    @router.get("/healthz")
+    async def healthz():
+        return {"status": "ok"}
+
+    @router.get("/battle/healthz")
+    async def battle_healthz():
+        return {"status": "ok"}
+
+    @router.get(
+        "/battles/list",
+        summary="Список боёв",
+        description="Получить список всех боёв с пагинацией. Возвращает реальные battle_id из игры (source_id).",
+        tags=["Battles"]
+    )
+    async def list_battles(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
+        battles, total = await list_battles_uc.execute(page=page, limit=limit)
+        items = map_domain_battles_to_summary(battles)
+        return {"battles": items, "total": total, "page": page, "limit": limit}
+
+    # Алиас для совместимости с клиентами, ожидающими /battle/list
+    @router.get("/battle/list")
+    async def list_battles_alias(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
+        return await list_battles(page=page, limit=limit)
+
+    @router.get(
+        "/battles/search",
+        summary="Поиск боёв",
+        description="""
+Поиск боёв по различным критериям: игрок, клан, тип боя, период времени, монстры.
+
+**Примеры:**
+- `player=Термит` - все бои игрока
+- `clan=WG` - все бои клана
+- `from_date=2025-10-01&to_date=2025-10-08` - бои за период
+- `monsters=rat` - бои с крысами
+        """,
+        tags=["Battles"]
+    )
+    async def search_battles(
+        player: Optional[str] = Query(None, description="Имя игрока (частичное совпадение)"),
+        clan: Optional[str] = Query(None, description="Название клана"),
+        battle_type: Optional[str] = Query(None, description="Тип боя"),
+        from_date: Optional[datetime] = Query(None, description="Начало периода"),
+        to_date: Optional[datetime] = Query(None, description="Конец периода"),
+        monsters: Optional[str] = Query(None, description="Тип монстра"),
+        page: int = Query(1, ge=1),
+        limit: int = Query(10, ge=1, le=100),
+    ):
+        battles, total = await search_battles_uc.execute(
+            player=player, clan=clan, battle_type=battle_type,
+            from_date=from_date, to_date=to_date, monsters=monsters,
+            page=page, limit=limit,
+        )
+        items = map_domain_battles_to_summary(battles)
+        return {"battles": items, "total": total, "page": page, "limit": limit}
+
+    # Алиас для совместимости: /battle/search
+    @router.get("/battle/search")
+    async def search_battles_alias(
+        player: Optional[str] = Query(None),
+        clan: Optional[str] = Query(None),
+        battle_type: Optional[str] = Query(None),
+        from_date: Optional[datetime] = Query(None),
+        to_date: Optional[datetime] = Query(None),
+        monsters: Optional[str] = Query(None),
+        page: int = Query(1, ge=1),
+        limit: int = Query(10, ge=1, le=100),
+    ):
+        return await search_battles(
+            player=player, clan=clan, battle_type=battle_type,
+            from_date=from_date, to_date=to_date, monsters=monsters,
+            page=page, limit=limit,
+        )
+
+    @router.get(
+        "/battle/{battle_id:int}",
+        summary="Получить бой по ID",
+        description="Возвращает полную информацию о бое по его service_id (внутренний ID БД).",
+        tags=["Battles"]
+    )
+    async def get_battle(battle_id: int = Path(..., description="Service ID боя (внутренний ID БД)")):
+        battle = await get_battle_uc.execute(battle_id)
+        if not battle:
+            raise HTTPException(status_code=404, detail="Бой не найден")
+        return battle
+
+    @router.get("/battle/by-source/{source_id:int}")
+    async def get_battle_by_source(source_id: int = Path(...)):
+        db = BattleDatabase()
+        row = await db._execute_one("SELECT id FROM battles WHERE source_id = $1", source_id)
+        await db.disconnect()
+        if not row:
+            raise HTTPException(status_code=404, detail="Бой с таким source_id не найден")
+        battle = await get_battle_uc.execute(int(row["id"]))
+        if not battle:
+            raise HTTPException(status_code=404, detail="Бой не найден")
+        return battle
+
+    @router.get(
+        "/battle/{battle_id:int}/raw",
+        summary="Получить сырой XML лог боя",
+        description="Возвращает оригинальный XML файл боя (.tzb) для скачивания или анализа.",
+        tags=["Battles"]
+    )
+    async def get_battle_raw(battle_id: int = Path(..., description="Service ID боя")):
+        # 1) Получаем storage_key из БД (ищем по source_id, т.к. battle_id = source_id)
+        db = BattleDatabase()
+        # Сначала находим service_id по source_id
+        row = await db._execute_one("SELECT id, storage_key FROM battles WHERE source_id = $1", battle_id)
+        await db.disconnect()
+        if not row or not row.get("storage_key"):
+            raise HTTPException(status_code=404, detail="Исходный файл не найден")
+        storage_key = row["storage_key"]
+
+        # 2) Пытаемся получить файл через api_mother (предпочтительно)
+        mother = HttpMotherClient()
+        try:
+            if await mother.health_check():
+                # Ожидается, что api_mother вернёт gz- или xml-контент по относительному пути
+                # Здесь используем basename (требуется унификация путей в api_mother)
+                import os
+                content = await mother.get_gz_file(os.path.basename(storage_key))
+                try:
+                    import gzip
+                    xml = gzip.decompress(content)
+                except Exception:
+                    xml = content
+                return Response(content=xml, media_type="application/xml")
+        except Exception:
+            pass
+        finally:
+            await mother.close()
+
+        # 3) Фолбэк: читаем файл с локального пути (с перебором кандидатов по basename)
+        import gzip, os
+        base = os.path.basename(storage_key)
+        candidates = []
+        # исходный путь как есть
+        candidates.append(storage_key)
+        # вариант с .gz/без .gz
+        if storage_key.endswith('.gz'):
+            candidates.append(storage_key[:-3])
+        else:
+            candidates.append(storage_key + '.gz')
+        # варианты в /app
+        candidates.append(os.path.join('/app', base))
+        if not base.endswith('.gz'):
+            candidates.append(os.path.join('/app', base + '.gz'))
+        else:
+            candidates.append(os.path.join('/app', base[:-3]))
+
+        # варианты в каталоге основных логов внутри контейнера
+        log_base = '/home/zero/logs/btl'
+        candidates.append(os.path.join(log_base, base))
+        if not base.endswith('.gz'):
+            candidates.append(os.path.join(log_base, base + '.gz'))
+        else:
+            candidates.append(os.path.join(log_base, base[:-3]))
+
+        # возможное зеркало, если смонтировано внутрь контейнера по тому же пути
+        mirror_base = '/Users/ii/Documents/srv/btl_mirror'
+        candidates.append(os.path.join(mirror_base, base))
+        if not base.endswith('.gz'):
+            candidates.append(os.path.join(mirror_base, base + '.gz'))
+        else:
+            candidates.append(os.path.join(mirror_base, base[:-3]))
+
+        last_err = None
+        # Добавим кандидатов по шаблону <battle_id>.tzb(.gz)
+        try:
+            bid_str = str(battle_id)
+            name_variants = [f"{bid_str}.tzb", f"{bid_str}.tzb.gz"]
+            for nm in name_variants:
+                candidates.append(os.path.join('/app', nm))
+                candidates.append(os.path.join(log_base, nm))
+                candidates.append(os.path.join(mirror_base, nm))
+        except Exception:
+            pass
+
+        for cand in candidates:
+            try:
+                if cand.endswith('.gz'):
+                    with gzip.open(cand, 'rb') as f:
+                        data = f.read()
+                else:
+                    with open(cand, 'rb') as f:
+                        data = f.read()
+                return Response(content=data, media_type="application/xml")
+            except Exception as e:  # пробуем следующий кандидат
+                last_err = e
+                continue
+        raise HTTPException(status_code=500, detail=f"Не удалось прочитать файл: {last_err}")
+
+    @router.post("/sync")
+    async def sync():
+        result = await sync_logs_uc.sync(os.getenv("LOGS_BASE", "/home/zero/logs/btl"))
+        return {"synced": result.get("successful", 0), "total": result.get("total_files", 0), "errors": result.get("errors", [])}
+
+    @router.post("/sync/reprocess")
+    async def reprocess():
+        result = await sync_logs_uc.reprocess()
+        return {"message": "Повторная обработка завершена", "processed": result.get("processed", 0), "successful": result.get("successful", 0), "failed": result.get("failed", 0)}
+
+    @router.get("/analytics/player/{login}")
+    async def get_player(login: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        stats = await player_analytics_uc.get_player(login=login, days=days)
+        if not stats:
+            raise HTTPException(status_code=404, detail="Игрок не найден")
+        
+        # УЛУЧШЕНИЕ: Добавляем K-means playstyle
+        player_id = await player_analytics_uc._a._get_player_id_by_login(login)
+        if player_id:
+            playstyle_data = await player_analytics_uc._a._get_playstyle(player_id, days=days)
+            if playstyle_data:
+                # Преобразуем Pydantic объект в dict если нужно
+                if hasattr(stats, 'dict'):
+                    stats_dict = stats.dict()
+                elif hasattr(stats, '__dict__'):
+                    stats_dict = stats.__dict__
+                else:
+                    stats_dict = dict(stats)
+                
+                # Добавляем playstyle
+                stats_dict['playstyle'] = playstyle_data.get('display_name')
+                stats_dict['playstyle_confidence'] = playstyle_data.get('confidence')
+                stats_dict['playstyle_cluster_id'] = playstyle_data.get('cluster_id')
+                
+                # Добавляем bot detection
+                bd = playstyle_data.get('bot_detection', {})
+                if bd.get('is_likely_bot'):
+                    stats_dict['bot_warning'] = {
+                        'is_likely_bot': True,
+                        'bot_score': bd.get('bot_score'),
+                        'reasons': bd.get('reasons', [])
+                    }
+                
+                return stats_dict
+        
+        return stats
+
+    @router.get("/analytics/players/top")
+    async def get_top_players(metric: str = Query("battles_count"), limit: int = Query(10, ge=1, le=100), days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc.get_top_players(metric=metric, limit=limit, days=days)
+
+    @router.get("/analytics/clan/{name}")
+    async def get_clan(name: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        stats = await clan_analytics_uc.get_clan(name=name, days=days)
+        if not stats:
+            raise HTTPException(status_code=404, detail="Клан не найден")
+        return stats
+
+    @router.get("/analytics/resource/{name}")
+    async def get_resource(name: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        stats = await resource_analytics_uc.get_resource(name=name, days=days)
+        if not stats:
+            raise HTTPException(status_code=404, detail="Ресурс не найден")
+        return stats
+
+    @router.get("/analytics/monster/{kind}")
+    async def get_monster(kind: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        stats = await monster_analytics_uc.get_monster(kind=kind, days=days)
+        if not stats:
+            raise HTTPException(status_code=404, detail="Монстр не найден")
+        return stats
+
+    @router.get("/analytics/anomalies")
+    async def get_anomalies(days: int = Query(7, ge=1, le=30)):
+        return await resource_analytics_uc.get_anomalies(days=days)
+
+    @router.get("/analytics/stats")
+    async def general_stats(days: int = Query(30, ge=1, le=365)):
+        return await general_stats_uc.get_stats(days=days)
+
+    @router.get("/analytics/antibot/candidates")
+    async def analytics_antibot_candidates(limit: int = Query(50, ge=1, le=200), days: int = Query(7, ge=1, le=365)):
+        return await player_analytics_uc._a.get_antibot_candidates(limit=limit, days=days)
+
+    @router.get("/analytics/antiboost/pairs")
+    async def analytics_antiboost_pairs(days: int = Query(14, ge=1, le=180), min_pairs: int = Query(3, ge=1, le=20)):
+        return await player_analytics_uc._a.get_antiboost_pairs(days=days, min_pairs=min_pairs)
+
+    @router.get("/analytics/economy/resources")
+    async def analytics_economy_resources(days: int = Query(30, ge=1, le=365)):
+        return await resource_analytics_uc.get_economy(days=days)
+
+    # Новые ручки экономики и PvE
+    @router.get("/analytics/economy/resources/series")
+    async def analytics_resources_series(
+        days: int = Query(30, ge=1, le=365),
+        bucket: str = Query("day", pattern="^(day|week)$"),
+        loc_x: Optional[int] = Query(None),
+        loc_y: Optional[int] = Query(None),
+        from_date: Optional[datetime] = Query(None),
+        to_date: Optional[datetime] = Query(None),
+    ):
+        # Передадим только один способ задания периода: приоритет from/to
+        kwargs = {"days": days, "bucket": bucket, "loc_x": loc_x, "loc_y": loc_y}
+        if from_date and to_date:
+            kwargs.update({"from_date": from_date.date(), "to_date": to_date.date()})
+        return await player_analytics_uc._a.get_resources_series(**kwargs)
+
+    @router.get("/analytics/economy/resources/top-miners")
+    async def analytics_resources_top_miners(
+        days: int = Query(30, ge=1, le=365),
+        loc_x: Optional[int] = Query(None),
+        loc_y: Optional[int] = Query(None),
+        limit: int = Query(10, ge=1, le=100),
+        by: str = Query("player", pattern="^(player|clan)$"),
+        from_date: Optional[datetime] = Query(None),
+        to_date: Optional[datetime] = Query(None),
+        exclude_bots: bool = Query(False, description="Фильтровать ботов (K-means)")  # НОВЫЙ
+    ):
+        kwargs = {"days": days, "loc_x": loc_x, "loc_y": loc_y, "limit": limit, "by": by, "exclude_bots": exclude_bots}
+        if from_date and to_date:
+            kwargs.update({"from_date": from_date.date(), "to_date": to_date.date()})
+        return await player_analytics_uc._a.get_resources_top_miners(**kwargs)
+
+    @router.get("/analytics/economy/resources/summary")
+    async def analytics_resources_summary(
+        loc_x: Optional[int] = Query(None),
+        loc_y: Optional[int] = Query(None),
+        from_date: Optional[datetime] = Query(None),
+        to_date: Optional[datetime] = Query(None),
+        days: int = Query(30, ge=1, le=365),
+    ):
+        kwargs = {"loc_x": loc_x, "loc_y": loc_y, "days": days}
+        if from_date and to_date:
+            kwargs.update({"from_date": from_date.date(), "to_date": to_date.date()})
+        return await player_analytics_uc._a.get_resources_summary(**kwargs)
+
+    @router.get("/analytics/pve/load")
+    async def analytics_pve_load(
+        days: int = Query(30, ge=1, le=365),
+        bucket: str = Query("day", pattern="^(day|week)$"),
+        loc_x: Optional[int] = Query(None),
+        loc_y: Optional[int] = Query(None),
+        from_date: Optional[datetime] = Query(None),
+        to_date: Optional[datetime] = Query(None),
+    ):
+        kwargs = {"days": days, "bucket": bucket, "loc_x": loc_x, "loc_y": loc_y}
+        if from_date and to_date:
+            kwargs.update({"from_date": from_date, "to_date": to_date})
+        return await player_analytics_uc._a.get_pve_load(**kwargs)
+
+    @router.get("/analytics/pve/top-locations")
+    async def analytics_pve_top_locations(days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le=100)):
+        return await player_analytics_uc._a.get_pve_top_locations(days=days, limit=limit)
+
+    @router.get("/analytics/pve/monsters/breakdown")
+    async def analytics_pve_monster_breakdown(
+        loc_x: Optional[int] = Query(None),
+        loc_y: Optional[int] = Query(None),
+        from_date: Optional[datetime] = Query(None),
+        to_date: Optional[datetime] = Query(None),
+        days: int = Query(30, ge=1, le=365),
+        limit: int = Query(100, ge=1, le=1000),
+    ):
+        return await player_analytics_uc._a.get_pve_monster_breakdown(loc_x=loc_x, loc_y=loc_y, from_date=from_date, to_date=to_date, days=days, limit=limit)
+
+    # ===== Новые аналитики =====
+    @router.get("/analytics/survival/player/{login}")
+    async def analytics_survival_player(login: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc.get_survival(login=login, days=days)
+
+    @router.get("/analytics/survival/clan/{name}")
+    async def analytics_survival_clan(name: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        return await clan_analytics_uc.get_survival(name=name, days=days)
+
+    @router.get("/analytics/efficiency/player/{login}")
+    async def analytics_efficiency_player(
+        login: str = Path(...),
+        days: int = Query(30, ge=1, le=365),
+        w_p: float = Query(1.0, ge=0.0, le=10.0),
+    ):
+        return await player_analytics_uc.get_efficiency(login=login, days=days, w_p=w_p)
+
+    @router.get("/analytics/efficiency/top")
+    async def analytics_efficiency_top(limit: int = Query(10, ge=1, le=100), days: int = Query(30, ge=1, le=365), w_p: float = Query(1.0, ge=0.0, le=10.0)):
+        return await player_analytics_uc.get_efficiency_top(limit=limit, days=days, w_p=w_p)
+
+    @router.get("/analytics/battles/player/{login}")
+    async def analytics_player_battles(
+        login: str = Path(...),
+        from_date: Optional[datetime] = Query(None),
+        to_date: Optional[datetime] = Query(None),
+        limit: int = Query(1000, ge=1, le=100000),
+    ):
+        """Вернёт список боёв игрока за период: id и ts."""
+        db = BattleDatabase()
+        where = ["p.login = $1"]
+        params: List[Any] = [login]
+        arg_idx = 2
+        if from_date is not None:
+            where.append(f"b.ts >= ${arg_idx}")
+            params.append(from_date)
+            arg_idx += 1
+        if to_date is not None:
+            where.append(f"b.ts <= ${arg_idx}")
+            params.append(to_date)
+            arg_idx += 1
+        where_sql = " AND ".join(where)
+        query = f"""
+            SELECT b.id AS battle_id, b.source_id, b.ts
+            FROM battles b
+            JOIN battle_participants bp ON bp.battle_id = b.id
+            JOIN players p ON p.id = bp.player_id
+            WHERE {where_sql}
+            ORDER BY b.ts ASC
+            LIMIT ${arg_idx}
+        """
+        params.append(limit)
+        rows = await db._execute_query(query, *params)
+        await db.disconnect()
+        return [{"battle_id": r["battle_id"], "source_id": r.get("source_id"), "ts": r["ts"]} for r in rows]
+
+    @router.get("/analytics/antibot/player/{login}")
+    async def analytics_antibot_player_detail(login: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        detail = await player_analytics_uc._a.get_antibot_player_detail(login=login, days=days)
+        if not detail:
+            raise HTTPException(status_code=404, detail="Игрок не найден или недостаточно данных")
+        return detail
+
+    @router.get("/admin/loading-stats")
+    async def loading_stats(_: str = Depends(require_admin_token)):
+        return await admin_logs_uc.loading_stats()
+
+    @router.post("/admin/cleanup")
+    async def cleanup(days_old: int = Query(30, ge=1, le=365), _: str = Depends(require_admin_token)):
+        deleted = await admin_logs_uc.cleanup(days_old=days_old)
+        return {"message": f"Удалено {deleted} старых записей логов", "deleted_count": deleted}
+
+    @router.post("/battles/upload")
+    async def upload_battle_file(file: UploadFile = File(...)):
+        """Загружает и обрабатывает TZB файл или архив .tzb.gz"""
+        if not (file.filename.endswith('.tzb') or file.filename.endswith('.tzb.gz')):
+            raise HTTPException(status_code=400, detail="Только .tzb и .tzb.gz файлы поддерживаются")
+        
+        try:
+            # Читаем содержимое файла
+            content = await file.read()
+            
+            # Сохраняем во временный файл
+            import tempfile
+            import gzip
+            
+            if file.filename.endswith('.tzb.gz'):
+                # Разархивируем .tzb.gz файл
+                print(f"🔄 Разархивирую: {file.filename}")
+                decompressed_content = gzip.decompress(content)
+                
+                with tempfile.NamedTemporaryFile(suffix='.tzb', delete=False) as tmp_file:
+                    tmp_file.write(decompressed_content)
+                    tmp_path = tmp_file.name
+            else:
+                # Обычный .tzb файл
+                with tempfile.NamedTemporaryFile(suffix='.tzb', delete=False) as tmp_file:
+                    tmp_file.write(content)
+                    tmp_path = tmp_file.name
+            
+            # Обрабатываем файл через loader
+            from app.loader import BattleLoader
+            from app.database import BattleDatabase
+            from app.parser import BattleParser
+            
+            db = BattleDatabase()
+            parser = BattleParser()
+            loader = BattleLoader(db, parser)
+            
+            result = await loader.process_file(tmp_path)
+            
+            # Удаляем временный файл
+            os.unlink(tmp_path)
+            
+            return {
+                "message": f"Файл {file.filename} успешно обработан",
+                "battle_id": result.get("battle_id"),
+                "status": "success"
+            }
+            
+        except Exception as e:
+            # Удаляем временный файл в случае ошибки
+            if 'tmp_path' in locals():
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+            raise HTTPException(status_code=500, detail=f"Ошибка обработки файла: {str(e)}")
+
+    # ===== СОЦИАЛЬНЫЕ АНАЛИТИКИ =====
+    @router.get("/analytics/social/allies/{login}")
+    async def analytics_social_allies(login: str = Path(...), days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le=50)):
+        return await player_analytics_uc._a.get_player_allies(login=login, days=days, limit=limit)
+
+    @router.get("/analytics/social/rivals/{login}")
+    async def analytics_social_rivals(login: str = Path(...), days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le=50)):
+        return await player_analytics_uc._a.get_player_rivals(login=login, days=days, limit=limit)
+
+    @router.get("/analytics/clans/wars")
+    async def analytics_clans_wars(days: int = Query(30, ge=1, le=365), limit: int = Query(20, ge=1, le=100)):
+        return await player_analytics_uc._a.get_clan_wars(days=days, limit=limit)
+
+    # ===== ТЕРРИТОРИАЛЬНЫЕ АНАЛИТИКИ =====
+    @router.get("/analytics/map/heatmap")
+    async def analytics_map_heatmap(days: int = Query(30, ge=1, le=365), limit: int = Query(100, ge=1, le=500)):
+        return await player_analytics_uc._a.get_map_heatmap(days=days, limit=limit)
+
+    @router.get("/analytics/map/pvp-hotspots")
+    async def analytics_map_pvp_hotspots(days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le=50)):
+        return await player_analytics_uc._a.get_pvp_hotspots(days=days, limit=limit)
+
+    @router.get("/analytics/map/clan-control")
+    async def analytics_map_clan_control(days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le=50)):
+        return await player_analytics_uc._a.get_clan_control(days=days, limit=limit)
+
+    # ===== ВРЕМЕННЫЕ АНАЛИТИКИ =====
+    @router.get("/analytics/time/activity-heatmap")
+    async def analytics_time_activity_heatmap(days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc._a.get_activity_heatmap(days=days)
+
+    @router.get("/analytics/time/peak-hours")
+    async def analytics_time_peak_hours(days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc._a.get_peak_hours(days=days)
+
+    # ===== ЭКОНОМИКА РАСШИРЕННАЯ =====
+    @router.get("/analytics/economy/farm-efficiency/{login}")
+    async def analytics_economy_farm_efficiency(login: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc._a.get_farm_efficiency(login=login, days=days)
+
+    @router.get("/analytics/economy/rare-items")
+    async def analytics_economy_rare_items(days: int = Query(30, ge=1, le=365), limit: int = Query(20, ge=1, le=100)):
+        return await player_analytics_uc._a.get_rare_items(days=days, limit=limit)
+
+    # ===== СОРЕВНОВАТЕЛЬНЫЕ МЕТРИКИ =====
+    @router.get("/analytics/pvp/elo")
+    async def analytics_pvp_elo(days: int = Query(30, ge=1, le=365), limit: int = Query(50, ge=1, le=200)):
+        return await player_analytics_uc._a.get_player_elo(days=days, limit=limit)
+
+    @router.get("/analytics/streaks/{login}")
+    async def analytics_streaks(login: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc._a.get_player_streaks(login=login, days=days)
+
+    # ===== МЕТА-АНАЛИЗ =====
+    @router.get("/analytics/meta/professions")
+    async def analytics_meta_professions(days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc._a.get_profession_stats(days=days)
+
+    @router.get("/players/by-profession")
+    async def get_players_by_profession(
+        profession: str = Query(..., description="Название профессии (например: 'без профессии', 'сталкер')"),
+        limit: int = Query(50, ge=1, le=500, description="Количество игроков"),
+        days: int = Query(365, ge=1, le=365, description="За последние N дней")
+    ):
+        """Получить список игроков по профессии с их статистикой"""
+        return await player_analytics_uc._a.get_players_by_profession(profession=profession, limit=limit, days=days)
+
+    @router.get("/analytics/meta/balance")
+    async def analytics_meta_balance(days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc._a.get_balance_report(days=days)
+
+    # ===== ПРЕДСКАЗАТЕЛЬНАЯ АНАЛИТИКА =====
+    @router.get("/analytics/predictions/churn")
+    async def analytics_predictions_churn(days: int = Query(30, ge=1, le=365), limit: int = Query(50, ge=1, le=200)):
+        return await player_analytics_uc._a.get_churn_prediction(days=days, limit=limit)
+
+    @router.get("/analytics/recommendations/farming/{login}")
+    async def analytics_recommendations_farming(login: str = Path(...), days: int = Query(30, ge=1, le=365)):
+        return await player_analytics_uc._a.get_farming_recommendations(login=login, days=days)
+
+    # ===== ML / PLAYSTYLE =====
+    
+    @router.get("/analytics/playstyle/{login}")
+    async def analytics_playstyle(login: str = Path(...), days: int = Query(90, ge=7, le=365)):
+        """Классификация стиля игры с помощью K-means"""
+        try:
+            from app.ml.playstyle_classifier import PlaystyleClassifier, SKLEARN_AVAILABLE
+        except ImportError:
+            raise HTTPException(status_code=501, detail="ML модуль не установлен")
+        
+        if not SKLEARN_AVAILABLE:
+            raise HTTPException(status_code=501, detail="scikit-learn не установлен")
+        
+        # Получаем player_id
+        player_id = await player_analytics_uc._a._get_player_id_by_login(login)
+        if not player_id:
+            raise HTTPException(status_code=404, detail=f"Игрок {login} не найден")
+        
+        # Загружаем/создаём классификатор
+        classifier = PlaystyleClassifier()
+        
+        # Пытаемся загрузить обученную модель
+        if not classifier.load_model():
+            # Модель не обучена - возвращаем ошибку с подсказкой
+            raise HTTPException(
+                status_code=503, 
+                detail="Модель не обучена. Админу: запустите POST /admin/ml/train-playstyle"
+            )
+        
+        # Классифицируем игрока
+        db = BattleDatabase()
+        result = await classifier.classify_player(player_id, db, days=days)
+        await db.disconnect()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Недостаточно данных для классификации (минимум 5 боёв)")
+        
+        return result
+    
+    @router.get("/analytics/playstyle/clusters/stats")
+    async def analytics_playstyle_clusters():
+        """Статистика по всем кластерам стилей игры"""
+        try:
+            from app.ml.playstyle_classifier import PlaystyleClassifier, SKLEARN_AVAILABLE
+        except ImportError:
+            raise HTTPException(status_code=501, detail="ML модуль не установлен")
+        
+        if not SKLEARN_AVAILABLE:
+            raise HTTPException(status_code=501, detail="scikit-learn не установлен")
+        
+        classifier = PlaystyleClassifier()
+        
+        if not classifier.load_model():
+            raise HTTPException(status_code=503, detail="Модель не обучена")
+        
+        return {
+            "clusters": classifier.get_cluster_stats(),
+            "total_clusters": classifier.n_clusters,
+        }
+    
+    # ===== XML SYNC ENDPOINTS =====
+    
+    @router.get("/admin/xml-sync/workers/health")
+    async def xml_sync_workers_health(_token = Depends(require_admin_token)):
+        """Проверить здоровье всех XML воркеров"""
+        from app.xml_sync_worker import XmlSyncWorker
+        worker = XmlSyncWorker()
+        return await worker.check_workers_health()
+    
+    @router.post("/admin/xml-sync/battle/{battle_id}")
+    async def xml_sync_single_battle(
+        battle_id: int = Path(..., ge=1),
+        _token = Depends(require_admin_token)
+    ):
+        """Запросить один лог боя через XML протокол"""
+        from app.xml_sync_client import XmlSyncClient
+        from app.database import BattleDatabase
+        
+        client = XmlSyncClient()
+        db = BattleDatabase()
+        
+        # Проверяем не запрашивали ли уже
+        existing = await db._execute_one(
+            "SELECT battle_id, status FROM xml_sync_log WHERE battle_id = $1",
+            battle_id
+        )
+        
+        if existing and existing['status'] == 'success':
+            await db.disconnect()
+            return {
+                "message": f"Бой {battle_id} уже был успешно запрошен ранее",
+                "battle_id": battle_id,
+                "status": "already_exists"
+            }
+        
+        # Запрашиваем лог
+        result = client.request_and_save(battle_id)
+        
+        # Сохраняем в лог
+        if result:
+            await db._execute_command(
+                """
+                INSERT INTO xml_sync_log (battle_id, requested_at, status, error_message, file_path, size_bytes)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (battle_id) DO UPDATE SET
+                    requested_at = EXCLUDED.requested_at,
+                    status = EXCLUDED.status,
+                    error_message = EXCLUDED.error_message,
+                    file_path = EXCLUDED.file_path,
+                    size_bytes = EXCLUDED.size_bytes
+                """,
+                battle_id,
+                datetime.now(),
+                result['status'],
+                result.get('error'),
+                result.get('file_path'),
+                result.get('size_bytes')
+            )
+        
+        await db.disconnect()
+        return result
+    
+    @router.post("/admin/xml-sync/range")
+    async def xml_sync_range(
+        start_id: int = Query(..., ge=1, description="Начальный ID боя"),
+        end_id: int = Query(..., ge=1, description="Конечный ID боя"),
+        skip_existing: bool = Query(True, description="Пропускать уже запрошенные бои"),
+        _token = Depends(require_admin_token)
+    ):
+        """Запросить диапазон логов боев через HTTP воркеры"""
+        from app.xml_sync_worker import XmlSyncWorker
+        
+        if end_id < start_id:
+            raise HTTPException(status_code=400, detail="end_id должен быть >= start_id")
+        
+        if end_id - start_id > 1000:
+            raise HTTPException(status_code=400, detail="Максимальный диапазон: 1000 боев за раз")
+        
+        worker = XmlSyncWorker()
+        result = await worker.sync_range(start_id, end_id, skip_existing)
+        
+        return result
+    
+    @router.get("/admin/xml-sync/status")
+    async def xml_sync_status(_token = Depends(require_admin_token)):
+        """Получить статистику XML синхронизации"""
+        from app.database import BattleDatabase
+        
+        db = BattleDatabase()
+        
+        stats = await db._execute_one("""
+            SELECT 
+                COUNT(*) as total_requests,
+                COUNT(*) FILTER (WHERE status = 'success') as success_count,
+                COUNT(*) FILTER (WHERE status = 'failed') as failed_count,
+                MIN(battle_id) as min_battle_id,
+                MAX(battle_id) as max_battle_id,
+                MAX(requested_at) as last_request
+            FROM xml_sync_log
+        """)
+        
+        await db.disconnect()
+        
+        return {
+            "total_requests": stats['total_requests'] or 0,
+            "success_count": stats['success_count'] or 0,
+            "failed_count": stats['failed_count'] or 0,
+            "min_battle_id": stats['min_battle_id'],
+            "max_battle_id": stats['max_battle_id'],
+            "last_request": stats['last_request'].isoformat() if stats['last_request'] else None
+        }
+    
+    @router.get("/admin/xml-sync/requested")
+    async def xml_sync_requested(
+        limit: int = Query(50, ge=1, le=500, description="Количество записей"),
+        status: Optional[str] = Query(None, description="Фильтр по статусу: success, failed"),
+        _token = Depends(require_admin_token)
+    ):
+        """Получить список запрошенных боев"""
+        from app.database import BattleDatabase
+        
+        db = BattleDatabase()
+        
+        if status:
+            query = """
+                SELECT battle_id, requested_at, status, error_message, file_path, size_bytes
+                FROM xml_sync_log
+                WHERE status = $1
+                ORDER BY requested_at DESC
+                LIMIT $2
+            """
+            rows = await db._execute_query(query, status, limit)
+        else:
+            query = """
+                SELECT battle_id, requested_at, status, error_message, file_path, size_bytes
+                FROM xml_sync_log
+                ORDER BY requested_at DESC
+                LIMIT $1
+            """
+            rows = await db._execute_query(query, limit)
+        
+        await db.disconnect()
+        
+        return {
+            "count": len(rows),
+            "limit": limit,
+            "status_filter": status,
+            "battles": [
+                {
+                    "battle_id": row['battle_id'],
+                    "requested_at": row['requested_at'].isoformat() if row['requested_at'] else None,
+                    "status": row['status'],
+                    "error_message": row['error_message'],
+                    "file_path": row['file_path'],
+                    "size_bytes": row['size_bytes']
+                }
+                for row in rows
+            ]
+        }
+    
+    @router.delete("/admin/xml-sync/cleanup")
+    async def xml_sync_cleanup(_token = Depends(require_admin_token)):
+        """Очистить временные файлы .tzb из /tmp/"""
+        import glob
+        
+        files = glob.glob("/tmp/*.tzb")
+        deleted_count = 0
+        
+        for file_path in files:
+            try:
+                os.remove(file_path)
+                deleted_count += 1
+            except Exception as e:
+                logger.warning(f"Не удалось удалить {file_path}: {e}")
+        
+        return {
+            "message": f"Удалено {deleted_count} временных файлов",
+            "deleted_count": deleted_count
+        }
+    
+    @router.get("/admin/xml-sync/errors")
+    async def xml_sync_errors(
+        limit: int = Query(100, ge=1, le=1000, description="Количество записей"),
+        error_type: str = Query("all", description="Тип: all, failed, response_timeout"),
+        _token = Depends(require_admin_token)
+    ):
+        """Получить список боев с ошибками"""
+        from app.database import BattleDatabase
+        
+        db = BattleDatabase()
+        
+        if error_type == "all":
+            query = """
+                SELECT battle_id, requested_at, status, error_message
+                FROM xml_sync_log
+                WHERE status IN ('failed', 'response_timeout')
+                ORDER BY battle_id
+                LIMIT $1
+            """
+            rows = await db._execute_query(query, limit)
+        else:
+            query = """
+                SELECT battle_id, requested_at, status, error_message
+                FROM xml_sync_log
+                WHERE status = $1
+                ORDER BY battle_id
+                LIMIT $2
+            """
+            rows = await db._execute_query(query, error_type, limit)
+        
+        await db.disconnect()
+        
+        return {
+            "count": len(rows),
+            "error_type": error_type,
+            "battles": [
+                {
+                    "battle_id": row['battle_id'],
+                    "requested_at": row['requested_at'].isoformat() if row['requested_at'] else None,
+                    "status": row['status'],
+                    "error_message": row['error_message']
+                }
+                for row in rows
+            ]
+        }
+    
+    @router.post("/admin/xml-sync/retry-failed")
+    async def xml_sync_retry_failed(
+        limit: int = Query(100, ge=1, le=500, description="Сколько боев попробовать докачать"),
+        workers: int = Query(1, ge=1, le=5, description="Количество параллельных воркеров"),
+        _token = Depends(require_admin_token)
+    ):
+        """Докачать бои с ошибками (failed, response_timeout)"""
+        from app.xml_sync_worker import XmlSyncWorker
+        
+        worker = XmlSyncWorker()
+        result = await worker.sync_missing(limit=limit)
+        
+        return result
+    
+    @router.post("/admin/xml-sync/auto-continue")
+    async def xml_sync_auto_continue(
+        batch_size: int = Query(1000, ge=1, le=1000, description="Размер пачки"),
+        workers: int = Query(1, ge=1, le=5, description="Количество параллельных воркеров"),
+        _token = Depends(require_admin_token)
+    ):
+        """Автоматическая синхронизация: продолжить с последнего успешного боя"""
+        from app.xml_sync_worker import XmlSyncWorker
+        
+        worker = XmlSyncWorker()
+        result = await worker.sync_auto_continue(batch_size=batch_size)
+        
+        return result
+
+    @router.post(
+        "/admin/xml-sync/fetch-new",
+        summary="Умная загрузка новых логов",
+        description="""
+        Умная загрузка НОВЫХ логов после последнего успешного + автопарсинг.
+        
+        **Алгоритм:**
+        1. Находит MAX(battle_id) из успешных в xml_sync_log
+        2. Загружает count новых логов через 6 XML воркеров (или все доступные если count=None)
+        3. Автоматический retry для failed/timeout логов
+        4. Опциональный автопарсинг через api_mother с контролем параллельности
+        
+        **Примеры:**
+        - `count=300` - загрузить 300 следующих логов
+        - `count=None` - загрузить все новые до battle_id=3780000
+        - `auto_parse=true` - автоматически распарсить в БД
+        - `max_parallel=10` - параллельность парсинга (рекомендуется 1-3)
+        
+        **Производительность:** ~10 логов/сек, 300 логов за ~20-30 секунд
+        """,
+        tags=["Admin - XML Sync"],
+        responses={
+            200: {"description": "Успешная загрузка с детальной статистикой"},
+            403: {"description": "Неверный admin token"}
+        }
+    )
+    async def xml_sync_fetch_new(
+        count: Optional[int] = Query(None, ge=1, le=10000, description="Количество логов (None=все до текущего)"),
+        auto_parse: bool = Query(True, description="Автоматически распарсить"),
+        max_parallel: int = Query(10, ge=1, le=20, description="Параллельность парсинга"),
+        _token = Depends(require_admin_token)
+    ):
+        """
+        Умная загрузка НОВЫХ логов после последнего успешного + автопарсинг
+        
+        Алгоритм:
+        1. Находит MAX(battle_id) из успешных
+        2. Загружает count логов (или все до текущего если count=None)
+        3. Retry для failed/timeout
+        4. Автоматически парсит через api_mother
+        """
+        import httpx
+        from app.xml_sync_worker import XmlSyncWorker
+        
+        worker = XmlSyncWorker()
+        await worker._init_db()  # Инициализируем БД
+        
+        # Определяем последний успешный лог
+        query = "SELECT MAX(battle_id) as max_id FROM xml_sync_log WHERE status = 'success'"
+        result = await worker.db._execute_query(query)
+        
+        if not result or result[0]['max_id'] is None:
+            start_id = 3772607
+        else:
+            start_id = result[0]['max_id'] + 1
+        
+        # Если count не указан - загружаем до текущего максимального (3772606 + новые)
+        if count is None:
+            end_id = 3780000  # Загружаем с запасом
+        else:
+            end_id = start_id + count - 1
+        
+        # Загружаем через XML sync
+        sync_result = await worker.sync_range(start_id, end_id, skip_existing=False)
+        
+        # Retry для failed/timeout
+        retry_count = 0
+        if sync_result.get('failed', 0) > 0 or sync_result.get('timeout', 0) > 0:
+            retry_result = await worker.sync_missing()
+            retry_count = retry_result.get('total_synced', 0)
+        
+        # Автопарсинг
+        parsed_count = 0
+        if auto_parse and sync_result.get('success', 0) > 0:
+            try:
+                async with httpx.AsyncClient(timeout=300.0) as client:
+                    response = await client.post(
+                        "http://api_mother:8083/process-batch",
+                        params={"limit": count + 100, "max_parallel": max_parallel}
+                    )
+                    if response.status_code == 200:
+                        parse_result = response.json()
+                        parsed_count = parse_result.get('processed', 0)
+            except Exception as e:
+                logger.error(f"Ошибка автопарсинга: {e}")
+        
+        return {
+            "range": {"start": start_id, "end": end_id},
+            "downloaded": sync_result.get('success', 0),
+            "failed": sync_result.get('failed', 0),
+            "timeout": sync_result.get('timeout', 0),
+            "retried": retry_count,
+            "parsed": parsed_count
+        }
+
+    @router.post(
+        "/admin/xml-sync/fetch-old",
+        summary="Умная загрузка старых логов",
+        description="""
+        Умная загрузка СТАРЫХ логов до самого раннего успешного + автопарсинг.
+        
+        **Алгоритм:**
+        1. Находит MIN(battle_id) из успешных в xml_sync_log
+        2. Загружает count старых логов через 6 XML воркеров (или все до battle_id=1475356 если count=None)
+        3. Автоматический retry для failed/timeout логов
+        4. Опциональный автопарсинг через api_mother с контролем параллельности
+        
+        **Примеры:**
+        - `count=300` - загрузить 300 предыдущих логов
+        - `count=None` - загрузить все старые до battle_id=1475356
+        - `auto_parse=true` - автоматически распарсить в БД
+        - `max_parallel=10` - параллельность парсинга (рекомендуется 1-3)
+        
+        **Производительность:** ~10 логов/сек, 300 логов за ~20-30 секунд
+        """,
+        tags=["Admin - XML Sync"],
+        responses={
+            200: {"description": "Успешная загрузка с детальной статистикой"},
+            400: {"description": "Нет успешных логов для определения начальной точки"},
+            403: {"description": "Неверный admin token"}
+        }
+    )
+    async def xml_sync_fetch_old(
+        count: Optional[int] = Query(None, ge=1, le=10000, description="Количество логов (None=все до первого)"),
+        auto_parse: bool = Query(True, description="Автоматически распарсить"),
+        max_parallel: int = Query(10, ge=1, le=20, description="Параллельность парсинга"),
+        _token = Depends(require_admin_token)
+    ):
+        """
+        Умная загрузка СТАРЫХ логов до самого раннего успешного + автопарсинг
+        
+        Алгоритм:
+        1. Находит MIN(battle_id) из успешных
+        2. Загружает count логов (или все до battle_id=1 если count=None)
+        3. Retry для failed/timeout
+        4. Автоматически парсит через api_mother
+        """
+        import httpx
+        from app.xml_sync_worker import XmlSyncWorker
+        
+        worker = XmlSyncWorker()
+        await worker._init_db()  # Инициализируем БД
+        
+        # Определяем самый ранний успешный лог
+        query = "SELECT MIN(battle_id) as min_id FROM xml_sync_log WHERE status = 'success'"
+        result = await worker.db._execute_query(query)
+        
+        if not result or result[0]['min_id'] is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Нет успешных логов. Используйте /fetch-new"
+            )
+        
+        min_id = result[0]['min_id']
+        end_id = min_id - 1
+        
+        # Если count не указан - загружаем все от 1 до min_id
+        if count is None:
+            start_id = max(1, 1475356)  # Самый ранний известный бой
+        else:
+            start_id = max(1, end_id - count + 1)
+        
+        if start_id > end_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Невозможно загрузить: минимальный ID уже {min_id}"
+            )
+        
+        # Загружаем через XML sync
+        sync_result = await worker.sync_range(start_id, end_id, skip_existing=False)
+        
+        # Retry для failed/timeout
+        retry_count = 0
+        if sync_result.get('failed', 0) > 0 or sync_result.get('timeout', 0) > 0:
+            retry_result = await worker.sync_missing()
+            retry_count = retry_result.get('total_synced', 0)
+        
+        # Автопарсинг
+        parsed_count = 0
+        if auto_parse and sync_result.get('success', 0) > 0:
+            try:
+                async with httpx.AsyncClient(timeout=300.0) as client:
+                    response = await client.post(
+                        "http://api_mother:8083/process-batch",
+                        params={"limit": count + 100, "max_parallel": max_parallel}
+                    )
+                    if response.status_code == 200:
+                        parse_result = response.json()
+                        parsed_count = parse_result.get('processed', 0)
+            except Exception as e:
+                logger.error(f"Ошибка автопарсинга: {e}")
+        
+        return {
+            "range": {"start": start_id, "end": end_id},
+            "downloaded": sync_result.get('success', 0),
+            "failed": sync_result.get('failed', 0),
+            "timeout": sync_result.get('timeout', 0),
+            "retried": retry_count,
+            "parsed": parsed_count
+        }
+
+    @router.post("/admin/ml/train-playstyle")
+    async def admin_train_playstyle(
+        days: int = Query(90, ge=30, le=365),
+        _token = Depends(require_admin_token)
+    ):
+        """Обучение K-means модели классификации стилей (требует admin token)"""
+        try:
+            from app.ml.playstyle_classifier import train_playstyle_model, SKLEARN_AVAILABLE
+        except ImportError:
+            raise HTTPException(status_code=501, detail="ML модуль не установлен")
+        
+        if not SKLEARN_AVAILABLE:
+            raise HTTPException(status_code=501, detail="scikit-learn не установлен")
+        
+        db = BattleDatabase()
+        result = await train_playstyle_model(db, days=days)
+        await db.disconnect()
+        
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("error"))
+        
+        return result
+    
+    @router.post("/admin/ml/train-botdetector")
+    async def admin_train_botdetector(
+        days: int = Query(90, ge=30, le=365),
+        _token = Depends(require_admin_token)
+    ):
+        """Обучение Voting Ensemble (K-means + Isolation Forest) для детекции ботов"""
+        try:
+            from app.ml.bot_detector import train_bot_detector, SKLEARN_AVAILABLE
+        except ImportError:
+            raise HTTPException(status_code=501, detail="BotDetector не установлен")
+        
+        if not SKLEARN_AVAILABLE:
+            raise HTTPException(status_code=501, detail="scikit-learn не установлен")
+        
+        db = BattleDatabase()
+        result = await train_bot_detector(db, days=days)
+        await db.disconnect()
+        
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("error"))
+        
+        return result
+
+    return router
+
+

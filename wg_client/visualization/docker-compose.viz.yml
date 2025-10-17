@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  visualization:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wg_visualization
+    restart: unless-stopped
+    ports:
+      - "14488:80"
+    networks:
+      - wg_internal
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  wg_internal:
+    external: true
+
+# Для запуска:
+# docker-compose -f docker-compose.viz.yml up -d --build
+#
+# Доступ (после добавления в /etc/hosts):
+# https://viz.wg.local
+

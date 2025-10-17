@@ -3,9 +3,14 @@ api:
 
 accessLog: {}
 log:
-  level: ${TRAEFIK_LOG_LEVEL}
+  level: DEBUG
+
+providers:
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
 
 entryPoints:
   vpn:
-    address: ":80"
+    address: ":1010"
 

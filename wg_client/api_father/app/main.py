@@ -1,48 +1,73 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from typing import Optional
 import os
+import json
 import pymysql
 import redis
-import json
-from typing import Optional
+
+from shared.utils.logger import setup_logger
+from adapters.mysql_user_repository import MysqlUserRepository
+from adapters.socket_game_server_client import SocketGameServerClient
+from adapters.redis_queue import RedisQueue
+from adapters.telegram_group_checker import TelegramGroupChecker
+from usecases.register_user import RegisterUserUseCase
+from interfaces.http import build_router
+from infrastructure.db import get_dsn_and_db
 
 app = FastAPI(title="API_FATHER")
 
-redis_client: Optional[redis.Redis] = None
-QUEUE_REQUESTS = os.getenv("QUEUE_REQUESTS", "queue:requests")
-QUEUE_EVENTS = os.getenv("QUEUE_EVENTS", "queue:events")
+# CORS middleware для Swagger UI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-def get_dsn_and_db():
-    mode = os.getenv("DB_MODE", "test").lower()
+## get_dsn_and_db moved to infrastructure/db.py
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # game server settings
+    mode = os.getenv("GAME_SERVER_MODE", "test").lower()
     if mode == "prod":
-        host = os.getenv("DB_PROD_HOST")
-        port = int(os.getenv("DB_PROD_PORT", "3306"))
-        user = os.getenv("DB_PROD_USER")
-        password = os.getenv("DB_PROD_PASSWORD")
-        name = os.getenv("DB_PROD_NAME", "tzserver")
+        app.state.game_server_host = os.getenv("GAME_SERVER_PROD_HOST", os.getenv("GAME_SERVER_HOST", "10.8.0.4"))
+        app.state.game_server_port = int(os.getenv("GAME_SERVER_PROD_PORT", os.getenv("GAME_SERVER_PORT", "5190")))
     else:
-        host = os.getenv("DB_TEST_HOST", "db")
-        port = int(os.getenv("DB_TEST_PORT", "3306"))
-        user = os.getenv("DB_TEST_USER", "tzuser")
-        password = os.getenv("DB_TEST_PASSWORD", "tzpass")
-        name = os.getenv("DB_TEST_NAME", "tzserver")
-    dsn = dict(host=host, port=port, user=user, password=password, database=name, cursorclass=pymysql.cursors.DictCursor)
-    return dsn, name
+        app.state.game_server_host = os.getenv("GAME_SERVER_TEST_HOST", "game_server_mock")
+        app.state.game_server_port = int(os.getenv("GAME_SERVER_TEST_PORT", "5190"))
 
+    # usecase
+    queue_name = os.getenv("QUEUE_REQUESTS", "queue:requests")
+    telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    tg_checker = TelegramGroupChecker(telegram_token) if telegram_token else None
+    app.state.register_uc = RegisterUserUseCase(
+        repo=MysqlUserRepository(),
+        gs_client=SocketGameServerClient(),
+        tg_checker=tg_checker,
+        queue=RedisQueue(),
+        requests_queue=queue_name
+    )
 
-@app.on_event("startup")
-def init_redis():
-    global redis_client
-    url = os.getenv("REDIS_URL", "redis://api_father_redis:6379/0")
+    # redis client
     try:
-        redis_client = redis.from_url(url)
-        # ленивое создание «очередей»: просто убедимся, что ключи доступны (например, добавим пустую очистку)
-        # Ничего не делаем, если очереди уже существуют
-        redis_client.ping()
+        app.state.redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://api_father_redis:6379/0"))
+        app.state.redis_client.ping()
     except Exception as e:
-        # не валим сервис, но фиксируем ошибку подключения
-        redis_client = None
+        app.state.redis_client = None
         print(f"[startup] Redis init failed: {e}")
+
+    # attach router
+    app.include_router(build_router(app.state.register_uc))
+    yield
+
+
+app.router.lifespan_context = lifespan
 
 
 @app.get("/internal/health")
@@ -50,7 +75,22 @@ def health():
     ok = True
     details = {"redis": False}
     try:
-        if redis_client is not None and redis_client.ping():
+        if getattr(app.state, "redis_client", None) is not None and app.state.redis_client.ping():
+            details["redis"] = True
+    except Exception:
+        ok = False
+    return {"status": "ok" if ok else "degraded", "details": details}
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
+@app.get("/info/internal/health")
+def info_internal_health():
+    ok = True
+    details = {"redis": False}
+    try:
+        if getattr(app.state, "redis_client", None) is not None and app.state.redis_client.ping():
             details["redis"] = True
     except Exception:
         ok = False
@@ -80,11 +120,25 @@ def constants():
 
 @app.post("/internal/queue/enqueue")
 def enqueue(item: dict):
-    if redis_client is None:
+    if getattr(app.state, "redis_client", None) is None:
         raise HTTPException(status_code=503, detail="Redis unavailable")
     try:
-        qname = item.pop("queue", QUEUE_REQUESTS)
-        redis_client.rpush(qname, json.dumps(item, ensure_ascii=False))
+        qname = item.pop("queue", os.getenv("QUEUE_REQUESTS", "queue:requests"))
+        app.state.redis_client.rpush(qname, json.dumps(item, ensure_ascii=False))
         return {"queued": True, "queue": qname}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/server/status")
+def server_status():
+    """
+    Возвращает статус игрового сервера
+    """
+    return {
+        "online": True,
+        "players_online": 0,
+        "max_players": 1000,
+        "version": "1.0.0",
+        "uptime_seconds": 0
+    }

@@ -1,0 +1,19 @@
+{
+  "persistAuthorization": true,
+  "tryItOutEnabled": true,
+  "filter": true,
+  "deepLinking": true,
+  "displayRequestDuration": true,
+  "docExpansion": "list",
+  "defaultModelsExpandDepth": 1,
+  "defaultModelExpandDepth": 1,
+  "showExtensions": true,
+  "showCommonExtensions": true,
+  "supportedSubmitMethods": [
+    "get",
+    "post",
+    "put",
+    "delete",
+    "patch"
+  ]
+}

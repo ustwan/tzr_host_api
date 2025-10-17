@@ -1,0 +1,29 @@
+{
+  "battle": {
+    "id": 0,
+    "ts": null,
+    "size_bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "storage_key": "2182313.tzb",
+    "compressed": false,
+    "turns": 0,
+    "battle_type": null,
+    "loc": {
+      "x": 0,
+      "y": 0
+    },
+    "start_ts_unix": null,
+    "players_cnt": 0,
+    "monsters_cnt": 0,
+    "entities_cnt": 0,
+    "data": null
+  },
+  "participants": [],
+  "monsters": [],
+  "loot_total": {
+    "resources": [],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {}
+}

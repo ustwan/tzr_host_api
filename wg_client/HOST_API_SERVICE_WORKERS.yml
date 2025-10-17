@@ -1,0 +1,63 @@
+services:
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    networks:
+      - host-api-network
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - QUEUE_REQUESTS=${QUEUE_REQUESTS}
+
+  game_server_mock:
+    build: ./game_server_mock
+    environment:
+      - MODE=ok
+      - DELAY_SEC=0
+    networks:
+      - host-api-network
+    restart: unless-stopped
+
+  btl_syncer:
+    build: ./btl_syncer
+    restart: unless-stopped
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+      - RSYNC_HOST=${RSYNC_HOST:-btl_rsyncd}
+      - RSYNC_PORT=${RSYNC_PORT:-873}
+      - LOGS_BASE=/srv/btl_mirror
+      - SYNC_INTERVAL=${SYNC_INTERVAL:-60}
+    volumes:
+      - ${LOGS_BASE:-./xml/mirror}:/srv/btl_mirror
+    healthcheck:
+      test: ["CMD-SHELL", "ls /srv/btl_mirror >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  btl_compressor:
+    build: ./btl_compressor
+    restart: unless-stopped
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+      - LOGS_MIRROR=/srv/btl_mirror
+      - LOGS_STORE=/srv/btl_store/gz
+      - COMPRESS_INTERVAL=${COMPRESS_INTERVAL:-30}
+      - SHARD_DIVISOR=${SHARD_DIVISOR:-50000}
+    volumes:
+      - ${LOGS_BASE:-./xml/mirror}:/srv/btl_mirror:ro
+      - ${LOGS_STORE:-./xml/gz}:/srv/btl_store/gz
+    depends_on: [ btl_syncer ]
+    healthcheck:
+      test: ["CMD-SHELL", "ls /srv/btl_store/gz >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true

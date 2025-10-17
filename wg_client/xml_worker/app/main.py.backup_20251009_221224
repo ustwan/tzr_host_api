@@ -1,0 +1,294 @@
+"""
+XML Worker - ОДИН ФАЙЛ со всей логикой как в рабочем pipeline.py
+"""
+import os
+import socket
+import time
+import logging
+import asyncio
+from typing import List
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import httpx
+
+# Логирование
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s'
+)
+logger = logging.getLogger("app.main")
+
+# Конфигурация из ENV
+WORKER_ID = os.getenv("WORKER_ID", "unknown")
+LOGIN_NAME = os.getenv("LOGIN_NAME", "")
+LOGIN_KEY = os.getenv("LOGIN_KEY", "")
+API_MOTHER_URL = os.getenv("API_MOTHER_URL", "http://host-api-service-api_mother-1:8083")
+
+if not LOGIN_NAME or not LOGIN_KEY:
+    raise ValueError("LOGIN_NAME и LOGIN_KEY должны быть установлены!")
+
+logger.info(f"XML Worker {WORKER_ID} запущен с аккаунтом: {LOGIN_NAME}")
+
+app = FastAPI(title=f"XML Worker {WORKER_ID}")
+
+# Глобальное соединение (как в вашем скрипте - ОДНО соединение для всех batch)
+sock = None
+is_authenticated = False
+
+
+def connect_and_auth():
+    """Подключиться и авторизоваться - ТОЧНАЯ КОПИЯ из вашего скрипта"""
+    global sock, is_authenticated
+    
+    host = "185.92.72.18"
+    port = 5190
+    login_template = '<LOGIN v3="10.20.30.40" lang="ru" v2="4875537" v="108" p="{key}" l="{login_name}" />\x00'
+    
+    logger.info(f"Подключение к {host}:{port} (аккаунт: {LOGIN_NAME})")
+    
+    sock = socket.create_connection((host, int(port)), timeout=10)
+    
+    # Авторизация
+    login_xml = login_template.format(key=LOGIN_KEY, login_name=LOGIN_NAME)
+    sock.sendall(login_xml.encode('utf-8'))
+    
+    # Получаем OK
+    sock.recv(8192)
+    
+    # Отправка GETME
+    sock.sendall("<GETME />\x00".encode('utf-8'))
+    
+    # Просто ждём чтобы MYPARAM пришёл (не читаем буфер!)
+    time.sleep(1.5)
+    
+    is_authenticated = True
+    logger.info("✅ Авторизация успешна")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Инициализация при запуске"""
+    await asyncio.to_thread(connect_and_auth)
+    logger.info(f"✅ Worker {WORKER_ID} подключен к серверу")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Закрытие"""
+    logger.info(f"Worker {WORKER_ID} завершает работу")
+
+
+class FetchResponse(BaseModel):
+    battle_id: int
+    status: str
+    error: str | None = None
+    size_bytes: int | None = None
+    uploaded_to_mother: bool = False
+
+
+class BatchFetchRequest(BaseModel):
+    battle_ids: List[int]
+    max_parallel: int = 1
+    upload_to_mother: bool = True
+
+
+class BatchFetchResponse(BaseModel):
+    results: List[FetchResponse]
+    total: int
+    success: int
+    failed: int
+    timeout: int
+
+
+@app.get("/health")
+async def health():
+    """Проверка здоровья"""
+    return {
+        "status": "healthy" if is_authenticated else "degraded",
+        "worker_id": WORKER_ID,
+        "login": LOGIN_NAME,
+        "authenticated": is_authenticated
+    }
+
+
+@app.post("/fetch_batch", response_model=BatchFetchResponse)
+async def fetch_battle_batch(request: BatchFetchRequest):
+    """
+    Получить пачку боёв - ТОЧНАЯ КОПИЯ логики из download_battles_pipeline
+    """
+    global sock, is_authenticated
+    
+    if not is_authenticated or not sock:
+        raise HTTPException(status_code=503, detail="Не подключен")
+    
+    logger.info(f"📦 Pipeline batch: {len(request.battle_ids)} боев")
+    
+    battle_ids = request.battle_ids
+    batch_size = len(battle_ids)
+    output_dir = "/srv/btl_mirror"
+    
+    try:
+        # Отправляем все команды пачки
+        for battle_id in battle_ids:
+            sock.sendall(f'<POST t="//blook {battle_id}" />\x00'.encode('utf-8'))
+            time.sleep(0.05)
+            sock.sendall("<GETMYBATTLE />\x00".encode('utf-8'))
+            time.sleep(0.05)
+        
+        # Keep-alive
+        sock.sendall("<N />\x00".encode('utf-8'))
+        
+        # Получаем ответы
+        buffer = b''
+        sock.settimeout(30)
+        start_time = time.time()
+        max_time = 30
+        
+        while time.time() - start_time < max_time:
+            try:
+                chunk = sock.recv(16384)
+                if chunk:
+                    buffer += chunk
+                    blook_close = buffer.count(b'</BLOOK>')
+                    
+                    if blook_close >= batch_size:
+                        sock.settimeout(2)
+                        try:
+                            extra = sock.recv(16384)
+                            if extra:
+                                buffer += extra
+                        except socket.timeout:
+                            pass
+                        break
+                else:
+                    break
+            except socket.timeout:
+                if buffer.count(b'</BLOOK>') >= batch_size:
+                    break
+                continue
+        
+        logger.info(f"Получено: {buffer.count(b'</BLOOK>')} BLOOK")
+        
+        # Декодируем
+        decoded = buffer.decode('utf-8', errors='replace')
+        decoded = decoded.replace('\x00', '').replace('\x1f', '')
+        
+        # Разбиваем на BLOOK
+        blooks = []
+        pos = 0
+        while True:
+            start = decoded.find('<BLOOK>', pos)
+            if start == -1:
+                break
+            end = decoded.find('</BLOOK>', start)
+            if end == -1:
+                blooks.append(decoded[start:])
+                break
+            end += len('</BLOOK>')
+            blooks.append(decoded[start:end])
+            pos = end
+        
+        # Сохраняем
+        success_count = 0
+        results = []
+        saved_files = []
+        
+        for idx, blook_xml in enumerate(blooks):
+            if idx < len(battle_ids):
+                battle_id = battle_ids[idx]
+                shard = battle_id // 50000
+                shard_dir = os.path.join(output_dir, str(shard))
+                os.makedirs(shard_dir, exist_ok=True)
+                filename = os.path.join(shard_dir, f"{battle_id}.tzb")
+                
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(blook_xml)
+                
+                size_kb = len(blook_xml) / 1024
+                logger.info(f"✓ {battle_id}.tzb ({size_kb:.1f} KB)")
+                success_count += 1
+                saved_files.append(filename)
+                
+                results.append(FetchResponse(
+                    battle_id=battle_id,
+                    status="success",
+                    size_bytes=len(blook_xml),
+                    uploaded_to_mother=False
+                ))
+        
+        # Неполученные
+        for battle_id in battle_ids[success_count:]:
+            results.append(FetchResponse(
+                battle_id=battle_id,
+                status="failed",
+                error="Не получен от сервера"
+            ))
+        
+        failed_count = batch_size - success_count
+        if failed_count > 0:
+            logger.warning(f"Не получено: {failed_count} боёв")
+        
+        logger.info(f"Pipeline: {success_count} успешно, {failed_count} ошибок")
+        
+        # Upload в mother если нужно
+        uploaded_count = 0
+        if request.upload_to_mother and saved_files:
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                for file_path in saved_files:
+                    try:
+                        battle_id = int(os.path.basename(file_path).replace('.tzb', ''))
+                        
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            xml_content = f.read()
+                        
+                        response = await http_client.post(
+                            f"{API_MOTHER_URL}/upload/{battle_id}",
+                            content=xml_content,
+                            headers={"Content-Type": "application/xml"}
+                        )
+                        
+                        if response.status_code == 200:
+                            uploaded_count += 1
+                            for res in results:
+                                if res.battle_id == battle_id:
+                                    res.uploaded_to_mother = True
+                                    break
+                    except Exception as e:
+                        logger.error(f"Ошибка upload в mother: {e}")
+        
+        logger.info(f"📤 Загружено в mother: {uploaded_count}/{success_count}")
+        
+        # Пауза между batch (как в вашем скрипте)
+        await asyncio.sleep(0.3)
+        
+        return BatchFetchResponse(
+            results=results,
+            total=batch_size,
+            success=success_count,
+            failed=failed_count,
+            timeout=0
+        )
+        
+    except Exception as e:
+        logger.error(f"Ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        results = [
+            FetchResponse(battle_id=bid, status="failed", error=str(e))
+            for bid in battle_ids
+        ]
+        
+        return BatchFetchResponse(
+            results=results,
+            total=batch_size,
+            success=0,
+            failed=batch_size,
+            timeout=0
+        )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", "9000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

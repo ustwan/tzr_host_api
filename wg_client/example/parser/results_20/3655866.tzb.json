@@ -1,0 +1,117 @@
+{
+  "battle": {
+    "id": 3655866,
+    "ts": "2025-09-20T14:20:46Z",
+    "size_bytes": 46017,
+    "sha256": "edcbb01438cf9f604666f5a3603865037943732e1ad14489fbd76c8f94f54f75",
+    "storage_key": "3655866.tzb",
+    "compressed": false,
+    "turns": 7,
+    "battle_type": "B",
+    "loc": {
+      "x": 53,
+      "y": 1
+    },
+    "start_ts_unix": 1758377934,
+    "players_cnt": 1,
+    "monsters_cnt": 24,
+    "entities_cnt": 25,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "ЭЛИТА",
+      "clan": "RStalkerZ",
+      "profession": 2,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 261974,
+      "level": 12,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 24,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 6556
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Venom",
+            "qty": 10
+          }
+        ],
+        "monster_parts": [
+          {
+            "name": "Cursed Brain",
+            "qty": 8
+          },
+          {
+            "name": "Cursed Paw",
+            "qty": 4
+          },
+          {
+            "name": "Cursed Skin",
+            "qty": 3
+          }
+        ],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "erg",
+      "spec": null,
+      "side": 2,
+      "count": 5,
+      "min_level": 6,
+      "max_level": 7
+    },
+    {
+      "kind": "zmb",
+      "spec": null,
+      "side": 2,
+      "count": 19,
+      "min_level": 13,
+      "max_level": 15
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Venom",
+        "qty": 10
+      }
+    ],
+    "monster_parts": [
+      {
+        "name": "Cursed Brain",
+        "qty": 8
+      },
+      {
+        "name": "Cursed Paw",
+        "qty": 4
+      },
+      {
+        "name": "Cursed Skin",
+        "qty": 3
+      }
+    ],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_8E7F4C9C91D698D7",
+    "cs": "blake2s8:8E7F4C9C91D698D7"
+  }
+}

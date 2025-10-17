@@ -1,0 +1,236 @@
+"""
+XML Worker - изолированный воркер для загрузки логов боев
+Каждый воркер работает под одним аккаунтом
+НОВАЯ ВЕРСИЯ: Pipeline режим (на основе pipeline.py)
+"""
+import os
+import logging
+import asyncio
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel
+from typing import Optional, List
+from app.xml_client import XmlPipelineClient
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="XML Worker (Pipeline)",
+    description="Воркер для загрузки логов боев через XML протокол (Pipeline режим)",
+    version="2.0.0"
+)
+
+# Конфигурация из переменных окружения
+WORKER_ID = os.getenv("WORKER_ID", "unknown")
+LOGIN_NAME = os.getenv("LOGIN_NAME", "")
+LOGIN_KEY = os.getenv("LOGIN_KEY", "")
+API_MOTHER_URL = os.getenv("API_MOTHER_URL", "http://host-api-service-api_mother-1:8001")
+
+if not LOGIN_NAME or not LOGIN_KEY:
+    raise ValueError("LOGIN_NAME и LOGIN_KEY должны быть установлены!")
+
+logger.info(f"XML Worker {WORKER_ID} запущен с аккаунтом: {LOGIN_NAME}")
+
+# Глобальный клиент
+xml_client = None
+
+@app.on_event("startup")
+async def startup_event():
+    """Инициализация при запуске"""
+    global xml_client
+    xml_client = XmlPipelineClient(login_name=LOGIN_NAME, key=LOGIN_KEY)
+    
+    # Подключаемся сразу при старте (с retry)
+    connected = await asyncio.to_thread(xml_client.connect)
+    
+    if connected:
+        logger.info(f"✅ Worker {WORKER_ID} подключен к серверу (pipeline режим)")
+    else:
+        logger.error(f"❌ Worker {WORKER_ID} НЕ СМОГ подключиться!")
+        raise Exception("Не удалось подключиться к игровому серверу")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Закрытие соединения при остановке"""
+    global xml_client
+    if xml_client:
+        xml_client.disconnect()
+    logger.info(f"Worker {WORKER_ID} завершает работу")
+
+
+class FetchResponse(BaseModel):
+    """Ответ на запрос лога боя"""
+    battle_id: int
+    status: str  # success, failed, response_timeout
+    error: Optional[str] = None
+    size_bytes: Optional[int] = None
+    uploaded_to_mother: bool = False
+
+
+class BatchFetchRequest(BaseModel):
+    """Запрос на batch загрузку"""
+    battle_ids: List[int]
+    max_parallel: int = 10  # Для pipeline режима игнорируется
+    upload_to_mother: bool = True
+
+
+class BatchFetchResponse(BaseModel):
+    """Ответ на batch запрос"""
+    results: List[FetchResponse]
+    total: int
+    success: int
+    failed: int
+    timeout: int
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    global xml_client
+    is_connected = xml_client and xml_client.is_authenticated
+    return {
+        "status": "healthy" if is_connected else "degraded",
+        "worker_id": WORKER_ID,
+        "login": LOGIN_NAME,
+        "authenticated": is_connected
+    }
+
+
+@app.post("/fetch_batch", response_model=BatchFetchResponse)
+async def fetch_battle_batch(request: BatchFetchRequest):
+    """
+    Batch загрузка логов боев с пайплайнингом (НОВАЯ ВЕРСИЯ)
+    
+    Использует pipeline подход из pipeline.py:
+    - Отправляет все команды сразу
+    - Получает все ответы потоком
+    - Быстрее в 2.5x раза
+    - Одно соединение на весь batch
+    
+    Args:
+        request: Запрос с battle_ids и параметрами
+        
+    Returns:
+        BatchFetchResponse с результатами по каждому бою
+    """
+    logger.info(f"📦 Pipeline batch: {len(request.battle_ids)} боев")
+    
+    global xml_client
+    
+    if not xml_client or not xml_client.is_authenticated:
+        logger.error("XML клиент не инициализирован")
+        return BatchFetchResponse(
+            results=[],
+            total=0,
+            success=0,
+            failed=len(request.battle_ids),
+            timeout=0
+        )
+    
+    try:
+        # Используем pipeline метод
+        result = await asyncio.to_thread(
+            xml_client.get_battles_batch,
+            request.battle_ids,
+            output_dir="/srv/btl_mirror"
+        )
+        
+        logger.info(f"✅ Pipeline результат: {result['success']} успешно, {result['failed']} ошибок")
+        
+        # Формируем ответы для каждого боя
+        results = []
+        saved_files = result.get("files", [])
+        
+        for i, battle_id in enumerate(request.battle_ids):
+            if i < result["success"]:
+                results.append(FetchResponse(
+                    battle_id=battle_id,
+                    status="success",
+                    error=None,
+                    size_bytes=None,
+                    uploaded_to_mother=False  # Обновим после upload
+                ))
+            else:
+                results.append(FetchResponse(
+                    battle_id=battle_id,
+                    status="failed",
+                    error="Не получен от сервера",
+                    size_bytes=None,
+                    uploaded_to_mother=False
+                ))
+        
+        # Upload в mother если нужно
+        uploaded_count = 0
+        if request.upload_to_mother and saved_files:
+            import httpx
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                for file_path in saved_files:
+                    try:
+                        battle_id = int(os.path.basename(file_path).replace('.tzb', ''))
+                        
+                        # Читаем файл для отправки
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            xml_content = f.read()
+                        
+                        response = await http_client.post(
+                            f"{API_MOTHER_URL}/upload/{battle_id}",
+                            content=xml_content,
+                            headers={"Content-Type": "application/xml"}
+                        )
+                        
+                        if response.status_code == 200:
+                            uploaded_count += 1
+                            # Обновляем результат
+                            for res in results:
+                                if res.battle_id == battle_id:
+                                    res.uploaded_to_mother = True
+                                    break
+                    except Exception as e:
+                        logger.error(f"Ошибка upload в mother для {file_path}: {e}")
+        
+        logger.info(f"📤 Загружено в mother: {uploaded_count}/{result['success']}")
+        
+        # НЕ ЗАКРЫВАЕМ СОЕДИНЕНИЕ! Как в pipeline.py - держим сокет живым
+        # Сервер может обслужить много запросов в одном соединении
+        
+        return BatchFetchResponse(
+            results=results,
+            total=len(request.battle_ids),
+            success=result["success"],
+            failed=result["failed"],
+            timeout=0
+        )
+        
+    except Exception as e:
+        logger.error(f"Ошибка pipeline batch: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Возвращаем все как failed
+        results = [
+            FetchResponse(
+                battle_id=bid,
+                status="failed", 
+                error=str(e),
+                size_bytes=None,
+                uploaded_to_mother=False
+            ) for bid in request.battle_ids
+        ]
+        
+        return BatchFetchResponse(
+            results=results,
+            total=len(request.battle_ids),
+            success=0,
+            failed=len(request.battle_ids),
+            timeout=0
+        )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", "9000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

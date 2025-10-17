@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Демо сайт - Регистрация и статус сервера</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .alert-success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+        }
+        .alert-error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            color: #0c5460;
+        }
+        .server-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .config {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+        .config-item {
+            margin: 5px 0;
+        }
+        .small-btn {
+            background: #6c757d;
+            padding: 4px 8px;
+            font-size: 11px;
+            margin-left: 10px;
+            width: auto;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header с статусом -->
+        <div class="header">
+            <h1>🎮 Демо сайт - API Интеграция</h1>
+            <div id="server-status-badge" class="status-badge status-offline">
+                🔴 Загрузка...
+            </div>
+            <div class="config">
+                <div class="config-item">📡 API URL: <strong>http://localhost:8090</strong></div>
+                <div class="config-item">🔑 API Key: <strong>dev_api_key_12345</strong></div>
+                <div class="config-item">📱 Telegram Check: <strong>ВКЛЮЧЕНА</strong> (Группа: TZ - "Reloaded")</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Левая колонка: Статус сервера -->
+            <div class="card">
+                <h2>🌐 Статус игрового сервера</h2>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                    Публичный эндпоинт (БЕЗ API ключа)
+                </p>
+                
+                <div id="server-info" class="server-info">
+                    <div class="info-box">
+                        <div class="info-label">Статус</div>
+                        <div class="info-value" id="status-value">-</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">Рейт опыта</div>
+                        <div class="info-value" id="exp-rate">-</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">PvP рейт</div>
+                        <div class="info-value" id="pvp-rate">-</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">PvE рейт</div>
+                        <div class="info-value" id="pve-rate">-</div>
+                    </div>
+                </div>
+
+                <div id="status-error" style="display: none;" class="alert alert-error"></div>
+                
+                <button onclick="refreshServerStatus()">🔄 Обновить статус</button>
+                
+                <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                    Автообновление каждые 30 секунд
+                </div>
+            </div>
+
+            <!-- Правая колонка: Регистрация -->
+            <div class="card">
+                <h2>🔐 Регистрация пользователя</h2>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                    Защищено API ключом + Telegram проверка
+                </p>
+
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="login">Логин (3-16 символов)</label>
+                        <input type="text" id="login" required minlength="3" maxlength="16" 
+                               placeholder="Введите логин" value="ТестИгрок">
+                        <button type="button" class="small-btn" onclick="randomLogin()">
+                            🎲 Случайный
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Пароль (6-20 символов)</label>
+                        <input type="password" id="password" required minlength="6" maxlength="20" 
+                               placeholder="Введите пароль" value="test123456">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gender">Пол</label>
+                        <select id="gender" required>
+                            <option value="0">Женский</option>
+                            <option value="1" selected>Мужской</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telegram_id">Telegram ID</label>
+                        <input type="number" id="telegram_id" required 
+                               placeholder="Введите ваш Telegram ID" value="999999999">
+                        <div style="font-size: 11px; color: #666; margin-top: 5px;">
+                            ⚠️ Для успешной регистрации нужен реальный ID пользователя из группы TZ - "Reloaded"
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">Telegram Username (опционально)</label>
+                        <input type="text" id="username" placeholder="@username" value="@test_user">
+                    </div>
+
+                    <button type="submit" id="submit-btn">🚀 Зарегистрироваться</button>
+                </form>
+
+                <div id="register-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // КОНФИГУРАЦИЯ API
+        // ========================================
+        const API_CONFIG = {
+            baseUrl: 'http://localhost:8090',
+            apiKey: 'dev_api_key_12345'
+        };
+
+        // ========================================
+        // ФУНКЦИЯ: Получение статуса сервера
+        // ========================================
+        async function getServerStatus() {
+            try {
+                const response = await fetch(`${API_CONFIG.baseUrl}/api/server/status`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Обновляем UI
+                    document.getElementById('status-value').textContent = 
+                        data.server_status === 1 ? '🟢 Онлайн' : '🔴 Офлайн';
+                    document.getElementById('exp-rate').textContent = 'x' + data.rates.exp;
+                    document.getElementById('pvp-rate').textContent = 'x' + data.rates.pvp;
+                    document.getElementById('pve-rate').textContent = 'x' + data.rates.pve;
+
+                    // Обновляем badge
+                    const badge = document.getElementById('server-status-badge');
+                    if (data.server_status === 1) {
+                        badge.className = 'status-badge status-online';
+                        badge.textContent = '🟢 Сервер онлайн';
+                    } else {
+                        badge.className = 'status-badge status-offline';
+                        badge.textContent = '🔴 Сервер офлайн';
+                    }
+
+                    document.getElementById('status-error').style.display = 'none';
+                    return true;
+                } else {
+                    throw new Error('Ошибка получения статуса');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                const errorDiv = document.getElementById('status-error');
+                errorDiv.textContent = '❌ Не удалось получить статус сервера: ' + error.message;
+                errorDiv.style.display = 'block';
+                return false;
+            }
+        }
+
+        function refreshServerStatus() {
+            getServerStatus();
+        }
+
+        // ========================================
+        // ФУНКЦИЯ: Регистрация пользователя
+        // ========================================
+        async function registerUser(userData) {
+            try {
+                const response = await fetch(`${API_CONFIG.baseUrl}/api/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_CONFIG.apiKey,
+                        'X-Request-Id': 'req_' + Date.now()
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const data = await response.json();
+
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        function randomLogin() {
+            const prefixes = ['Игрок', 'User', 'Player', 'Тест'];
+            const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+            const num = Math.floor(Math.random() * 10000);
+            document.getElementById('login').value = `${prefix}_${num}`;
+        }
+
+        // ========================================
+        // ОБРАБОТЧИКИ СОБЫТИЙ
+        // ========================================
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submit-btn');
+            const resultDiv = document.getElementById('register-result');
+            
+            // Собираем данные
+            const formData = {
+                login: document.getElementById('login').value,
+                password: document.getElementById('password').value,
+                gender: parseInt(document.getElementById('gender').value),
+                telegram_id: parseInt(document.getElementById('telegram_id').value),
+                username: document.getElementById('username').value || null
+            };
+
+            // Блокируем кнопку
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Регистрация...';
+            resultDiv.innerHTML = '';
+
+            // Отправляем запрос
+            const result = await registerUser(formData);
+
+            // Обрабатываем ответ
+            if (result.success) {
+                resultDiv.className = 'alert alert-success';
+                resultDiv.innerHTML = `
+                    <strong>✅ Регистрация успешна!</strong><br>
+                    <div style="margin-top: 10px; font-size: 12px;">
+                        Логин: <strong>${formData.login}</strong><br>
+                        Request ID: ${result.data.request_id || 'N/A'}
+                    </div>
+                `;
+            } else {
+                resultDiv.className = 'alert alert-error';
+                
+                let errorMessage = '';
+                switch (result.status) {
+                    case 403:
+                        if (result.data.detail === 'not_in_telegram_group') {
+                            errorMessage = '❌ <strong>Ошибка:</strong> Вы не состоите в Telegram группе "TZ - Reloaded"';
+                        } else if (result.data.detail?.error === 'limit_exceeded') {
+                            errorMessage = '❌ <strong>Лимит превышен:</strong> Максимум 5 аккаунтов на Telegram ID';
+                        } else {
+                            errorMessage = '❌ <strong>Доступ запрещён</strong>';
+                        }
+                        break;
+                    case 409:
+                        errorMessage = '❌ <strong>Логин занят:</strong> Выберите другой логин';
+                        break;
+                    case 400:
+                        errorMessage = '❌ <strong>Ошибка валидации:</strong> ' + (result.data.message || 'Проверьте данные');
+                        break;
+                    case 429:
+                        errorMessage = '❌ <strong>Слишком много запросов:</strong> Попробуйте через минуту';
+                        break;
+                    default:
+                        errorMessage = '❌ <strong>Ошибка:</strong> ' + (result.error || result.data.detail || 'Неизвестная ошибка');
+                }
+                
+                resultDiv.innerHTML = errorMessage;
+            }
+
+            // Разблокируем кнопку
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🚀 Зарегистрироваться';
+        });
+
+        // ========================================
+        // АВТОЗАПУСК
+        // ========================================
+        window.addEventListener('load', () => {
+            // Получаем статус при загрузке
+            getServerStatus();
+            
+            // Обновляем каждые 30 секунд
+            setInterval(getServerStatus, 30000);
+            
+            // Генерируем случайный логин
+            randomLogin();
+        });
+
+        console.log('🎮 Демо сайт запущен!');
+        console.log('📡 API URL:', API_CONFIG.baseUrl);
+        console.log('🔑 API Key:', API_CONFIG.apiKey);
+    </script>
+</body>
+</html>
+
+
+

@@ -1,0 +1,92 @@
+{
+  "battle": {
+    "id": 3655943,
+    "ts": "2025-09-20T14:31:43Z",
+    "size_bytes": 50071,
+    "sha256": "387d814d4f77c6dbc37989b26a10165d49fc2262277135b0e699f939773017c3",
+    "storage_key": "3655943.tzb",
+    "compressed": false,
+    "turns": 10,
+    "battle_type": "D",
+    "loc": {
+      "x": -1,
+      "y": -2
+    },
+    "start_ts_unix": 1758378593,
+    "players_cnt": 1,
+    "monsters_cnt": 27,
+    "entities_cnt": 28,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "помор23",
+      "clan": "StalkerZ",
+      "profession": 3,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 15324,
+      "level": 8,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 27,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 3410,
+          "critical": 156
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Metals",
+            "qty": 28
+          },
+          {
+            "name": "Silicon",
+            "qty": 34
+          }
+        ],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 27,
+      "min_level": 11,
+      "max_level": 14
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Metals",
+        "qty": 28
+      },
+      {
+        "name": "Silicon",
+        "qty": 34
+      }
+    ],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_9D94264C0CAE4E68",
+    "cs": "blake2s8:9D94264C0CAE4E68"
+  }
+}

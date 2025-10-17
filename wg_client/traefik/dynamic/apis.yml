@@ -1,41 +1,118 @@
 http:
   routers:
     api1:
-      rule: "PathPrefix(`/api/server`)"
+      rule: "PathPrefix(`/api/server`) || PathPrefix(`/api/healthz`)"
       entryPoints: [ "vpn" ]
       service: api1_svc
       middlewares: [ "api1-strip" ]
     api2:
-      rule: "PathPrefix(`/api/bonus`)"
+      rule: "PathPrefix(`/api/register`) || PathPrefix(`/api/bonus`)"
       entryPoints: [ "vpn" ]
       service: api2_svc
+      middlewares: [ "api2-strip" ]
     api3:
       rule: "PathPrefix(`/api/info`)"
       entryPoints: [ "vpn" ]
       service: api3_svc
-    dashboard:
-      rule: "PathPrefix(`/dashboard`) || PathPrefix(`/api`)"
+      middlewares: [ "api3-strip" ]
+    api4:
+      rule: "PathPrefix(`/api/battles`) || PathPrefix(`/api/battle`) || PathPrefix(`/api/analytics`) || PathPrefix(`/api/sync`) || PathPrefix(`/api/admin`)"
       entryPoints: [ "vpn" ]
-      service: "api@internal"
-      middlewares: [ "dash-auth" ]
+      service: api4_svc
+      middlewares: [ "api4-strip" ]
+    api_mother:
+      rule: "PathPrefix(`/api/mother`)"
+      entryPoints: [ "vpn" ]
+      service: api_mother_svc
+      middlewares: [ "strip-api-mother" ]
+    api5:
+      rule: "PathPrefix(`/api/shop`) || PathPrefix(`/api/items`) || PathPrefix(`/api/snapshots`)"
+      entryPoints: [ "vpn" ]
+      service: api5_svc
+      middlewares: [ "api5-strip" ]
+    api1-openapi:
+      rule: "PathPrefix(`/api/api1`)"
+      entryPoints: [ "vpn" ]
+      service: api1_svc
+      middlewares: [ "strip-api-api1", "cors-all" ]
+    api2-openapi:
+      rule: "PathPrefix(`/api/api2`)"
+      entryPoints: [ "vpn" ]
+      service: api2_svc
+      middlewares: [ "strip-api-api2", "cors-all" ]
+    api3-openapi:
+      rule: "PathPrefix(`/api/api3`)"
+      entryPoints: [ "vpn" ]
+      service: api3_svc
+      middlewares: [ "strip-api-api3", "cors-all" ]
+    api4-openapi:
+      rule: "PathPrefix(`/api/api4`)"
+      entryPoints: [ "vpn" ]
+      service: api4_svc
+      middlewares: [ "strip-api-api4", "cors-all" ]
   services:
     api1_svc:
       loadBalancer:
         servers:
-          - url: "http://wg_vpn:8081"
+          - url: "http://api_1:8081"
     api2_svc:
       loadBalancer:
         servers:
-          - url: "http://wg_vpn:${API2_PORT}"
+          - url: "http://api_2:8082"
     api3_svc:
       loadBalancer:
         servers:
-          - url: "http://wg_vpn:${API3_PORT}"
+          - url: "http://api_father:9000"
+    api4_svc:
+      loadBalancer:
+        servers:
+          - url: "http://api_4:8084"
+    api_mother_svc:
+      loadBalancer:
+        servers:
+          - url: "http://api_mother:8083"
+    api5_svc:
+      loadBalancer:
+        servers:
+          - url: "http://api_5:8085"
   middlewares:
     api1-strip:
       stripPrefix:
-        prefixes: [ "/api/server" ]
-    dash-auth:
-      basicAuth:
-        users:
-          - "${TRAEFIK_DASHBOARD_USER}:${TRAEFIK_DASHBOARD_PASS}"
+        prefixes: [ "/api" ]
+    api-strip:
+      stripPrefix:
+        prefixes: [ "/api" ]
+    api2-strip:
+      stripPrefix:
+        prefixes: [ "/api" ]
+    api3-strip:
+      stripPrefix:
+        prefixes: [ "/api/info" ]
+    api4-strip:
+      stripPrefix:
+        prefixes: [ "/api" ]
+    strip-api-api1:
+      stripPrefix:
+        prefixes: [ "/api/api1" ]
+    strip-api-api2:
+      stripPrefix:
+        prefixes: [ "/api/api2" ]
+    strip-api-api3:
+      stripPrefix:
+        prefixes: [ "/api/api3" ]
+    strip-api-api4:
+      stripPrefix:
+        prefixes: [ "/api/api4" ]
+    strip-api-mother:
+      stripPrefix:
+        prefixes: [ "/api/mother" ]
+    api5-strip:
+      stripPrefix:
+        prefixes: [ "/api" ]
+    cors-all:
+      headers:
+        accessControlAllowOriginList: [ "*" ]
+        accessControlAllowMethods: ["GET", "OPTIONS"]
+        accessControlAllowHeaders: ["*"]
+        accessControlMaxAge: 100
+        addVaryHeader: true

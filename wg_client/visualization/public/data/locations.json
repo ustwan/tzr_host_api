@@ -1,0 +1,105 @@
+{
+  "locations": [
+    {
+      "id": "old_moscow",
+      "name": "Old Moscow",
+      "type": "dome",
+      "description": "Центральный купол, основная зона боёв",
+      "color": "#22d3ee",
+      "radius": 3,
+      "cells": [
+        {"x": 0, "y": -1},
+        {"x": 0, "y": 0},
+        {"x": 1, "y": -1},
+        {"x": 1, "y": 0},
+        {"x": 2, "y": -1},
+        {"x": 2, "y": 0}
+      ],
+      "stats": {
+        "total_battles": 0,
+        "avg_duration": 0,
+        "win_rate_defender": 0
+      }
+    },
+    {
+      "id": "neva_city",
+      "name": "Neva City",
+      "type": "dome",
+      "description": "Северный купол",
+      "color": "#60a5fa",
+      "radius": 3,
+      "cells": [
+        {"x": -33, "y": -56},
+        {"x": -33, "y": -57},
+        {"x": -33, "y": -55},
+        {"x": -34, "y": -56},
+        {"x": -34, "y": -57},
+        {"x": -34, "y": -55}
+      ],
+      "stats": {
+        "total_battles": 0,
+        "avg_duration": 0,
+        "win_rate_defender": 0
+      }
+    },
+    {
+      "id": "oasis",
+      "name": "Oasis",
+      "type": "dome",
+      "description": "Южный купол, пустынная зона",
+      "color": "#fbbf24",
+      "radius": 3,
+      "cells": [
+        {"x": 56, "y": 33},
+        {"x": 56, "y": 34},
+        {"x": 56, "y": 35},
+        {"x": 55, "y": 33},
+        {"x": 55, "y": 34},
+        {"x": 55, "y": 35}
+      ],
+      "stats": {
+        "total_battles": 0,
+        "avg_duration": 0,
+        "win_rate_defender": 0
+      }
+    }
+  ],
+  "location_types": [
+    {
+      "id": "dome",
+      "name": "Купол",
+      "icon": "🛡️",
+      "default_color": "#22d3ee",
+      "default_radius": 12
+    },
+    {
+      "id": "mine",
+      "name": "Шахта",
+      "icon": "⛏️",
+      "default_color": "#fbbf24",
+      "default_radius": 5
+    },
+    {
+      "id": "farm",
+      "name": "Точка фарма",
+      "icon": "🌾",
+      "default_color": "#10b981",
+      "default_radius": 3
+    },
+    {
+      "id": "city",
+      "name": "Город",
+      "icon": "🏙️",
+      "default_color": "#60a5fa",
+      "default_radius": 8
+    },
+    {
+      "id": "fortress",
+      "name": "Крепость",
+      "icon": "🏰",
+      "default_color": "#ef4444",
+      "default_radius": 10
+    }
+  ]
+}
+

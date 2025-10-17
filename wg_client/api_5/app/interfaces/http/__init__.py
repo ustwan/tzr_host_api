@@ -1,0 +1,3 @@
+"""HTTP interface - FastAPI роуты"""
+
+

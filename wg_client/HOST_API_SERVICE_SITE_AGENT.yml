@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  site_agent:
+    build:
+      context: ./site_agent
+      dockerfile: Dockerfile
+    container_name: site_agent
+    restart: unless-stopped
+    
+    # Network mode - доступ к локальным API через localhost
+    # Используем host network для доступа к 127.0.0.1:8082 и 127.0.0.1:9000
+    # ИЛИ можно использовать сети apinet/backnet
+    networks:
+      - host-api-network
+    
+    environment:
+      # WebSocket URL сайта
+      - SITE_WS_URL=${SITE_WS_URL:-wss://site.example.com/ws/pull}
+      
+      # JWT токен (короткоживущий, обновляется)
+      - AUTH_JWT=${SITE_AUTH_JWT}
+      
+      # HMAC секрет (общий с сайтом)
+      - HMAC_SECRET=${SITE_HMAC_SECRET}
+      
+      # AES-GCM ключ (base64)
+      - AES_GCM_KEY=${SITE_AES_GCM_KEY}
+      
+      # Локальные API
+      # Если используем host network: 127.0.0.1
+      # Если используем docker networks: имена сервисов
+      - LOCAL_REGISTER_URL=${LOCAL_REGISTER_URL:-http://api_2:8082/register}
+      - LOCAL_STATUS_URL=${LOCAL_STATUS_URL:-http://api_father:9000/internal/constants}
+      
+      # Таймауты
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-8.0}
+      - WS_PING_INTERVAL=${WS_PING_INTERVAL:-20.0}
+      
+      # Backoff
+      - RECONNECT_BACKOFF_MIN=${RECONNECT_BACKOFF_MIN:-3.0}
+      - RECONNECT_BACKOFF_MAX=${RECONNECT_BACKOFF_MAX:-30.0}
+      
+      # TTL
+      - JOB_TTL=${JOB_TTL:-45}
+      
+      # Логирование
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-UTC}
+    
+    # Volumes для секретов (опционально)
+    # secrets:
+    #   - site_hmac_secret
+    #   - site_aes_key
+    #   - site_jwt
+    
+    # Healthcheck
+    # Агент не имеет HTTP эндпоинтов, поэтому healthcheck по процессу
+    # healthcheck:
+    #   test: ["CMD", "pgrep", "-f", "python"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  host-api-network:
+    external: true
+
+# Опциональные секреты (если используются)
+# secrets:
+#   site_hmac_secret:
+#     file: ./site_agent/secrets/hmac_secret.txt
+#   site_aes_key:
+#     file: ./site_agent/secrets/aes_key.txt
+#   site_jwt:
+#     file: ./site_agent/secrets/jwt.txt
+

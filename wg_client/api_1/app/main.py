@@ -1,10 +1,38 @@
 from fastapi import FastAPI, HTTPException
-import os
-import httpx
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from .adapters.http_father_client import HttpFatherClient
+from .usecases.get_server_status import GetServerStatusUseCase
 
 app = FastAPI(title="API_1 server_status")
 
-API_FATHER_URL = os.getenv("API_FATHER_URL", "http://api_father:9000")
+# CORS middleware для Swagger UI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version="1.0.0",
+        routes=app.routes,
+    )
+    # Убираем префикс для прямого доступа через localhost:8081
+    openapi_schema["servers"] = [{"url": "/"}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi  # type: ignore
+
+uc = GetServerStatusUseCase(HttpFatherClient())
 
 
 @app.get("/healthz")
@@ -14,26 +42,7 @@ def healthz():
 
 @app.get("/server/status")
 async def server_status():
-    url = f"{API_FATHER_URL}/internal/constants"
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            consts = r.json()
+        return await uc.execute()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"api_father error: {e}")
-
-    # Сжимаем в удобный JSON (ключевые поля + meta)
-    response = {
-        "server_status": consts.get("ServerStatus", {}).get("value"),
-        "rates": {
-            "exp": consts.get("RateExp", {}).get("value"),
-            "pvp": consts.get("RatePvp", {}).get("value"),
-            "pve": consts.get("RatePve", {}).get("value"),
-            "color_mob": consts.get("RateColorMob", {}).get("value"),
-            "skill": consts.get("RateSkill", {}).get("value"),
-        },
-        "client_status": consts.get("CLIENT_STATUS", {}).get("value"),
-        "_meta": {k: v.get("description") for k, v in consts.items()},
-    }
-    return response

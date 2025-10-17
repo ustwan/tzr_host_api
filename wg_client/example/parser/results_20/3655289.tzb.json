@@ -1,0 +1,91 @@
+{
+  "battle": {
+    "id": 3655289,
+    "ts": "2025-09-20T12:55:06Z",
+    "size_bytes": 27430,
+    "sha256": "8721b6a691353dedbf58457c0aae98ba4759bc0bcd429d3be5dc9ad3dcdd8c66",
+    "storage_key": "3655289.tzb",
+    "compressed": false,
+    "turns": 9,
+    "battle_type": "D",
+    "loc": {
+      "x": 59,
+      "y": 36
+    },
+    "start_ts_unix": 1758372795,
+    "players_cnt": 1,
+    "monsters_cnt": 17,
+    "entities_cnt": 18,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "Slameex",
+      "clan": "TAKANO",
+      "profession": 14,
+      "side": 1,
+      "rank_points": 5.8,
+      "pve_points": 157894,
+      "level": 12,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 17,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 2303
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Silicon",
+            "qty": 6
+          }
+        ],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 12,
+      "min_level": 8,
+      "max_level": 10
+    },
+    {
+      "kind": "sti",
+      "spec": null,
+      "side": 2,
+      "count": 5,
+      "min_level": 7,
+      "max_level": 9
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Silicon",
+        "qty": 6
+      }
+    ],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_9D94264C0CAE4E68",
+    "cs": "blake2s8:9D94264C0CAE4E68"
+  }
+}

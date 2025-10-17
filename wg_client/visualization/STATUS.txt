@@ -1,0 +1,38 @@
+✅ WG_HUB Visualization — Готово!
+
+🌐 Доступ: http://localhost:14488
+
+📊 Дашборды (10):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Главная                      /
+2. Heatmap (редактор)           /heatmap.html
+3. Players                      /players.html  
+4. Antibot                      /antibot.html
+5. ML Clusters                  /ml-clusters.html
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. 🆕 Analytics Heatmap         /analytics-heatmap.html
+7. 🆕 Clan Control              /analytics-clan-control.html
+8. 🆕 Peak Hours                /analytics-peak-hours.html
+9. 🆕 PvP ELO & Professions     /analytics-pvp-elo.html
+10. 🆕 Churn Prediction         /analytics-churn.html
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 Исправления:
+✅ API baseURL → http://localhost:8005
+✅ Локации: только 3 купола (радиус 3)
+✅ Убраны шахты и фарм-точки
+
+🆕 Новые возможности:
+✅ 3 источника данных для heatmap
+✅ PvP ELO рейтинг + профессии  
+✅ Activity heatmap (30 дней × 24 часа)
+✅ Фильтры по датам во всех дашбордах
+✅ Демо-данные — всё работает без API
+
+📖 Документация:
+- ALL_DASHBOARDS.md — полное описание всех дашбордов
+- UPDATE_SUMMARY.md — что изменилось
+- ANALYTICS_DASHBOARDS.md — аналитические дашборды
+- LOCATIONS_GUIDE.md — редактор локаций
+
+🚀 Готово к использованию!

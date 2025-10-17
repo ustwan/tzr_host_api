@@ -1,0 +1,166 @@
+name: ${PROJECT_NAME}
+
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9100:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+    restart: unless-stopped
+    ports:
+      - "9101:19999"
+    volumes:
+      - netdata_data:/var/lib/netdata
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - ./netdata_config/netdata.conf:/etc/netdata/netdata.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - NETDATA_EXTRA_APM_CGROUPS=0
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    ports:
+      - "9102:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "9103:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+
+  homarr:
+    image: ghcr.io/ajnart/homarr:latest
+    container_name: homarr
+    restart: unless-stopped
+    ports:
+      - "9104:7575"
+    volumes:
+      - homarr_data:/app/data/configs
+    networks:
+      - host-api-network
+    environment:
+      - TZ=${TZ}
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    ports:
+      - "9105:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - host-api-network
+      - host-api-network
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=wg_hub_admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - TZ=${TZ}
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: swagger-ui
+    restart: unless-stopped
+    ports:
+      - "9107:8080"
+    volumes:
+      - ./swagger_config/swagger-config.json:/usr/share/nginx/html/swagger-config.json:ro
+      - ./swagger_config/initializer.js:/usr/share/nginx/html/swagger-initializer.js:ro
+      - swagger_ui_data:/data
+    networks:
+      - host-api-network
+      - host-api-network
+    environment:
+      - URLS=[{"name":"API 1","url":"http://localhost:8081/openapi.json"},{"name":"API 2","url":"http://localhost:8082/openapi.json"},{"name":"API 4","url":"http://localhost:8084/openapi.json"},{"name":"API Father","url":"http://localhost:8080/openapi.json"},{"name":"API Mother","url":"http://localhost:8083/openapi.json"}]
+      - CONFIG_URL=/swagger-config.json
+      - SWAGGER_UI_LAYOUT=StandaloneLayout
+      - SWAGGER_UI_DEEP_LINKING=true
+      - SWAGGER_UI_DISPLAY_REQUEST_DURATION=true
+      - SWAGGER_UI_TRY_IT_OUT_ENABLED=true
+      - PERSIST_AUTHORIZATION=true
+      - TZ=${TZ}
+
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "9108:80"
+    volumes:
+      - filebrowser_data:/srv
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host-api-network
+    environment:
+      - FB_DATABASE=/srv/database.db
+      - FB_ROOT=/srv
+      - TZ=${TZ}
+
+  ttyd:
+    image: tsl0922/ttyd:latest
+    container_name: ttyd
+    restart: unless-stopped
+    ports:
+      - "9109:7681"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host-api-network
+    command: ttyd -p 7681 -W -c 'admin:wg_hub_password' bash
+    environment:
+      - TZ=${TZ}
+
+volumes:
+  portainer_data:
+  netdata_data:
+  uptime_kuma_data:
+  homarr_data:
+  pgadmin_data:
+  swagger_ui_data:
+  filebrowser_data:

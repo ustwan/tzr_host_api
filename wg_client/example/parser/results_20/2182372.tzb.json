@@ -1,0 +1,98 @@
+{
+  "battle": {
+    "id": 2182372,
+    "ts": "2025-10-02T18:11:40Z",
+    "size_bytes": 19504,
+    "sha256": "c14f057103794105d81963d3d723aa0bd62a6d7b644f4b31e57911c6e405d5c7",
+    "storage_key": "2182372.tzb",
+    "compressed": false,
+    "turns": 3,
+    "battle_type": "C",
+    "loc": {
+      "x": 45,
+      "y": 28
+    },
+    "start_ts_unix": 1759428604,
+    "players_cnt": 1,
+    "monsters_cnt": 21,
+    "entities_cnt": 22,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "test101",
+      "clan": "SMArt",
+      "profession": 2,
+      "side": 1,
+      "rank_points": 0.0,
+      "pve_points": 8000000,
+      "level": 20,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 21,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 10200,
+          "Hallucinations": 55
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [],
+        "monster_parts": [],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "mts",
+      "spec": null,
+      "side": 3,
+      "count": 1,
+      "min_level": 10,
+      "max_level": 10
+    },
+    {
+      "kind": "vzz",
+      "spec": null,
+      "side": 2,
+      "count": 18,
+      "min_level": 10,
+      "max_level": 14
+    },
+    {
+      "kind": "vzz_spec",
+      "spec": ",,,,-27",
+      "side": 2,
+      "count": 1,
+      "min_level": 12,
+      "max_level": 12
+    },
+    {
+      "kind": "vzz_spec",
+      "spec": ",,,22,,-46",
+      "side": 2,
+      "count": 1,
+      "min_level": 10,
+      "max_level": 10
+    }
+  ],
+  "loot_total": {
+    "resources": [],
+    "monster_parts": [],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_9CB127D5CE850418",
+    "cs": "blake2s8:9CB127D5CE850418"
+  }
+}

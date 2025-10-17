@@ -1,0 +1,178 @@
+networks:
+  host-api-network:
+    name: host-api-network
+    external: true
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9100:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - host-api-network
+    environment:
+      - PORTAINER_AGENT_SECRET=wg_hub_host-api-network_secret
+
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+    restart: unless-stopped
+    ports:
+      - "9101:19999"
+    volumes:
+      - netdata_data:/var/lib/netdata
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - ./netdata_config/netdata.conf:/etc/netdata/netdata.conf:ro
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    networks:
+      - host-api-network
+    environment:
+      - NETDATA_CLAIM_TOKEN=wg_hub_netdata_token
+      - NETDATA_CLAIM_URL=https://app.netdata.cloud
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - NETDATA_EXTRA_APM_CGROUPS=0
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    ports:
+      - "9102:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host-api-network
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "9103:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    networks:
+      - host-api-network
+
+  homarr:
+    image: ghcr.io/ajnart/homarr:0.15.7
+    container_name: homarr
+    restart: unless-stopped
+    ports:
+      - "9104:7575"
+    volumes:
+      - homarr_data:/data
+      - homarr_config:/config
+    networks:
+      - host-api-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    ports:
+      - "9105:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - host-api-network
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=wg_hub_admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: swagger-ui
+    restart: unless-stopped
+    ports:
+      - "9107:8080"
+    volumes:
+      - ./swagger_config/swagger-config.json:/usr/share/nginx/html/swagger-config.json:ro
+      - ./swagger_config/initializer.js:/usr/share/nginx/html/swagger-initializer.js:ro
+      - swagger_ui_data:/data
+    networks:
+      - host-api-network
+      - host-api-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger.rule=PathPrefix(`/swagger`)"
+      - "traefik.http.routers.swagger.entrypoints=web"
+      - "traefik.http.services.swagger.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.swagger-stripprefix.stripprefix.prefixes=/swagger"
+      - "traefik.http.routers.swagger.middlewares=swagger-stripprefix"
+      - "traefik.docker.network=host-api-service_host-api-network"
+    environment:
+      - URLS=[{"name":"API 1","url":"http://traefik:1010/api/api1/openapi.json"},{"name":"API 2","url":"http://traefik:1010/api/api2/openapi.json"},{"name":"API 4","url":"http://traefik:1010/api/api4/openapi.json"},{"name":"API Father","url":"http://traefik:1010/api/api3/openapi.json"},{"name":"API Mother","url":"http://traefik:1010/api/mother/openapi.json"}]
+      - CONFIG_URL=/swagger-config.json
+      - SWAGGER_UI_LAYOUT=StandaloneLayout
+      - SWAGGER_UI_DEEP_LINKING=true
+      - SWAGGER_UI_DISPLAY_REQUEST_DURATION=true
+      - SWAGGER_UI_TRY_IT_OUT_ENABLED=true
+      - PERSIST_AUTHORIZATION=true
+
+  redoc:
+    image: redocly/redoc:latest
+    container_name: redoc
+    restart: unless-stopped
+    ports:
+      - "9110:80"
+    networks:
+      - host-api-network
+    environment:
+      - SPEC_URL=http://localhost:8084/openapi.json
+      - PAGE_TITLE=API 4 - ReDoc
+      - PAGE_FAVICON=https://redocly.com/favicon.ico
+
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "9108:80"
+    volumes:
+      - filebrowser_data:/srv
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host-api-network
+    environment:
+      - FB_DATABASE=/srv/database.db
+      - FB_ROOT=/srv
+
+  ttyd:
+    image: tsl0922/ttyd:latest
+    container_name: ttyd
+    restart: unless-stopped
+    ports:
+      - "9109:7681"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - host-api-network
+    command: ttyd -p 7681 -W -c 'admin:wg_hub_password' bash
+
+volumes:
+  portainer_data:
+  netdata_data:
+  uptime_kuma_data:
+  homarr_data:
+  homarr_config:
+  pgadmin_data:
+  swagger_ui_data:
+  filebrowser_data:
+
+    name: HOST_API_SERVICE_host-api-network
+  HOST_API_SERVICE_host-api-network:
+    external: true
+    name: HOST_API_SERVICE_host-api-network

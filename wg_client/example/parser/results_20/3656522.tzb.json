@@ -1,0 +1,157 @@
+{
+  "battle": {
+    "id": 3656522,
+    "ts": "2025-09-20T15:31:27Z",
+    "size_bytes": 60388,
+    "sha256": "b1c510fc63e1222fb20e9208b8afbef7e5ee4bb701b9f07adfef68247c08e609",
+    "storage_key": "3656522.tzb",
+    "compressed": false,
+    "turns": 9,
+    "battle_type": "B",
+    "loc": {
+      "x": -40,
+      "y": -46
+    },
+    "start_ts_unix": 1758382169,
+    "players_cnt": 1,
+    "monsters_cnt": 32,
+    "entities_cnt": 33,
+    "data": null
+  },
+  "participants": [
+    {
+      "login": "MEGAGERC",
+      "clan": "StalkerZ",
+      "profession": 2,
+      "side": 1,
+      "rank_points": 67.6,
+      "pve_points": 158025,
+      "level": 11,
+      "gender": 1,
+      "survived": 1,
+      "intervened": {
+        "state": 0
+      },
+      "kills": {
+        "monsters": 32,
+        "players": 0
+      },
+      "damage_total": {
+        "monsters": {
+          "HP": 3250
+        },
+        "players": {
+          "HP": 0
+        }
+      },
+      "loot": {
+        "resources": [
+          {
+            "name": "Organic",
+            "qty": 21
+          },
+          {
+            "name": "Precious metals",
+            "qty": 1
+          },
+          {
+            "name": "Silicon",
+            "qty": 2
+          },
+          {
+            "name": "Venom",
+            "qty": 19
+          }
+        ],
+        "monster_parts": [
+          {
+            "name": "Rat Eyes",
+            "qty": 2
+          },
+          {
+            "name": "Rat Skin",
+            "qty": 2
+          },
+          {
+            "name": "Stich Blood",
+            "qty": 2
+          },
+          {
+            "name": "Stich Claw",
+            "qty": 2
+          },
+          {
+            "name": "Stich Skin",
+            "qty": 2
+          }
+        ],
+        "other": []
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "kind": "rat",
+      "spec": null,
+      "side": 2,
+      "count": 16,
+      "min_level": 10,
+      "max_level": 12
+    },
+    {
+      "kind": "sti",
+      "spec": null,
+      "side": 2,
+      "count": 16,
+      "min_level": 8,
+      "max_level": 10
+    }
+  ],
+  "loot_total": {
+    "resources": [
+      {
+        "name": "Organic",
+        "qty": 21
+      },
+      {
+        "name": "Precious metals",
+        "qty": 1
+      },
+      {
+        "name": "Silicon",
+        "qty": 2
+      },
+      {
+        "name": "Venom",
+        "qty": 19
+      }
+    ],
+    "monster_parts": [
+      {
+        "name": "Rat Eyes",
+        "qty": 2
+      },
+      {
+        "name": "Rat Skin",
+        "qty": 2
+      },
+      {
+        "name": "Stich Blood",
+        "qty": 2
+      },
+      {
+        "name": "Stich Claw",
+        "qty": 2
+      },
+      {
+        "name": "Stich Skin",
+        "qty": 2
+      }
+    ],
+    "other": []
+  },
+  "map_patch": {
+    "i": "m_18D5A2D3C0E82F0C",
+    "cs": "blake2s8:18D5A2D3C0E82F0C"
+  }
+}
