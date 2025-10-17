@@ -62,6 +62,7 @@ ${BOLD}Режимы работы:${NC}
   ./tools/ctl.sh ${GREEN}start-prod${NC}             — запустить продакшн режим (продакшн БД, полные ресурсы)
   ./tools/ctl.sh ${GREEN}start-all${NC}              — запустить все сервисы (по умолчанию)
   ./tools/ctl.sh ${GREEN}start-with-agent${NC}       — запустить всё + Site Agent для сайта
+  ./tools/ctl.sh ${GREEN}start-full${NC}             — запустить ВСЁ (включая WG_HUB)
 
 ${BOLD}Управление:${NC}
   ./tools/ctl.sh ${GREEN}stop-all${NC}               — остановить всё (без удаления volume)
@@ -80,6 +81,13 @@ ${BOLD}Site Agent (для сайта):${NC}
   ./tools/ctl.sh ${GREEN}site-agent${NC}             — запустить Site Agent
   ./tools/ctl.sh ${GREEN}site-agent-logs${NC}        — логи Site Agent
   ./tools/ctl.sh ${GREEN}site-agent-restart${NC}     — перезапустить Site Agent
+
+${BOLD}WG_HUB (VPN сервер):${NC}
+  ./tools/ctl.sh ${GREEN}wg-hub${NC}                 — запустить WG_HUB (WireGuard VPN)
+  ./tools/ctl.sh ${GREEN}wg-hub-stop${NC}            — остановить WG_HUB
+  ./tools/ctl.sh ${GREEN}wg-hub-logs${NC}            — логи WG_HUB
+  ./tools/ctl.sh ${GREEN}wg-hub-status${NC}          — статус WG_HUB
+  ./tools/ctl.sh ${GREEN}wg-hub-ui${NC}              — URL веб-админки WG_HUB
 
 ${BOLD}Низкоуровневые:${NC}
   ./tools/ctl.sh ${GREEN}config${NC} | ${GREEN}ps${NC} | ${GREEN}images${NC} | ${GREEN}validate${NC}
@@ -324,6 +332,71 @@ case "$cmd" in
   site-agent-restart)
     banner "Site Agent: перезапуск"
     DC -f "$SITE_AGENT" restart site_agent ;;
+
+  # WG_HUB - VPN сервер
+  wg-hub)
+    banner "WG_HUB: запуск"
+    if [[ -d "../WG_HUB_" ]]; then
+      (cd ../WG_HUB_/wg-easy && docker compose up -d)
+      ok "WG_HUB запущен"
+      warn "Веб-админка: http://localhost:2019 (или ваш_IP:2019)"
+    else
+      err "WG_HUB_ не найден в корне проекта"
+      exit 1
+    fi ;;
+  
+  wg-hub-stop)
+    banner "WG_HUB: остановка"
+    if [[ -d "../WG_HUB_" ]]; then
+      (cd ../WG_HUB_/wg-easy && docker compose down)
+      ok "WG_HUB остановлен"
+    else
+      err "WG_HUB_ не найден"
+      exit 1
+    fi ;;
+  
+  wg-hub-logs)
+    banner "WG_HUB: логи"
+    docker logs -f wg-easy ;;
+  
+  wg-hub-status)
+    banner "WG_HUB: статус"
+    docker ps | grep wg-easy || warn "WG_HUB не запущен" ;;
+  
+  wg-hub-ui)
+    banner "WG_HUB: Веб-админка VPN"
+    echo -e "${GREEN}Откройте в браузере:${NC}"
+    echo -e "  ${CYAN}http://localhost:2019${NC}  (локально)"
+    echo -e "  ${CYAN}http://172.16.16.117:2019${NC}  (из локальной сети)"
+    echo
+    echo -e "${YELLOW}Если не работает - проверьте что WG_HUB запущен:${NC}"
+    echo -e "  ${GRAY}bash tools/ctl.sh wg-hub${NC}" ;;
+  
+  start-full)
+    banner "Запуск ПОЛНОГО стека (API + WG_HUB)"
+    export DB_MODE=test
+    export BATCH_SIZE=50
+    export MAX_WORKERS=4
+    
+    # Запускаем WG_HUB сначала
+    if [[ -d "../WG_HUB_" ]]; then
+      warn "Запуск WG_HUB..."
+      (cd ../WG_HUB_/wg-easy && docker compose up -d) &
+      spinner $! "WG-Easy"
+    fi
+    
+    need docker; ensure_networks
+    stack_up "INFRASTRUCTURE" "$INFRASTRUCTURE"
+    stack_up "DB"            "$DB_API"
+    stack_up "FATHER"        "$FATHER_API"
+    stack_up "LIGHTWEIGHT"   "$LIGHTWEIGHT_API"
+    stack_up "XML WORKERS"   "$XML_WORKERS"
+    stack_up "HEAVYWEIGHT"   "$HEAVYWEIGHT_API"
+    stack_up "WORKERS"       "$WORKERS"
+    stack_up "MONITORING"    "$MONITORING"
+    
+    ok "ПОЛНЫЙ стек запущен (WG_HUB + все API сервисы)"
+    warn "WG-Easy админка: http://localhost:2019" ;;
 
   # API 5 - Shop Parser
   api5-up)
