@@ -543,23 +543,20 @@ matrix_type(){
 
 matrix_menu(){
   clear
-  matrix_rain 1.2
-  echo -e "${GREEN}${BOLD}wake up, neo...${NC}"; sleep 0.4
-  echo -e "${GREEN}${BOLD}the HOST_API_SERVICE has you...${NC}"; sleep 0.4
-  echo -e "${GREEN}${BOLD}follow the white rabbit.${NC}"; sleep 0.5
+  banner "HOST_API_SERVICE Control Panel"
   echo
-  matrix_type "1) start-all    — запустить всё"
-  matrix_type "2) status       — статус контейнеров"
-  matrix_type "3) logs         — логи всех сервисов"
-  matrix_type "4) doctor       — диагностика"
-  matrix_type "5) networks     — сети проекта"
-  matrix_type "6) stacks       — управление стеком (up/down/logs)"
-  matrix_type "7) prune        — очистка Docker"
-  matrix_type "8) stop-all     — остановить всё"
-  matrix_type "9) down-all     — удалить всё (с volume)"
-  matrix_type "10) exit        — выход"
+  echo -e "  ${GREEN}1)${NC} start-all    — запустить всё"
+  echo -e "  ${GREEN}2)${NC} status       — статус контейнеров"
+  echo -e "  ${GREEN}3)${NC} logs         — логи всех сервисов"
+  echo -e "  ${GREEN}4)${NC} doctor       — диагностика"
+  echo -e "  ${GREEN}5)${NC} networks     — сети проекта"
+  echo -e "  ${GREEN}6)${NC} stacks       — управление стеком (up/down/logs)"
+  echo -e "  ${GREEN}7)${NC} prune        — очистка Docker"
+  echo -e "  ${GREEN}8)${NC} stop-all     — остановить всё"
+  echo -e "  ${GREEN}9)${NC} down-all     — удалить всё (с volume)"
+  echo -e "  ${GREEN}10)${NC} exit        — выход"
   echo
-  read -p "${CYAN}neo@host_api> ${NC}" choice
+  read -p "Выбор > " choice
   case "$choice" in
     1) "$0" start-all ;;
     2) "$0" status ;;
