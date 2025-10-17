@@ -128,16 +128,24 @@ ensure_networks(){
 }
 
 stack_up(){
-  local title="$1"; shift; local files=("$@")
+  local title="$1"; shift
+  local compose_args=()
+  for f in "$@"; do
+    compose_args+=("-f" "$f")
+  done
   banner "Запуск: ${title}"
-  DC -f ${files[*]} up -d &
+  DC "${compose_args[@]}" up -d &
   spinner $! "docker compose up -d (${title})"
 }
 
 stack_down(){
-  local title="$1"; shift; local files=("$@")
+  local title="$1"; shift
+  local compose_args=()
+  for f in "$@"; do
+    compose_args+=("-f" "$f")
+  done
   banner "Остановка: ${title}"
-  DC -f ${files[*]} down &
+  DC "${compose_args[@]}" down &
   spinner $! "docker compose down (${title})"
 }
 
