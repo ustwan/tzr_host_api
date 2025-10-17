@@ -27,12 +27,10 @@ cd tzr_host_api/wg_client
 
 # Конфигурация
 cp env.example .env
+nano .env
 
-# Запуск
-docker network create host-api-network
-docker compose -f HOST_API_SERVICE_INFRASTRUCTURE.yml up -d
-docker compose -f HOST_API_SERVICE_FATHER_API.yml up -d
-docker compose -f HOST_API_SERVICE_LIGHT_WEIGHT_API.yml up -d
+# Запуск (одной командой!)
+bash tools/ctl.sh start-all
 ```
 
 **📖 Полная инструкция:** [QUICKSTART.md](QUICKSTART.md)

@@ -47,34 +47,62 @@ DB_MODE=test  # или prod
 TZ=Europe/Moscow
 ```
 
-### 4. Запуск инфраструктуры
+### 4. Запуск (одной командой!)
 
 ```bash
-# Создать сеть
-docker network create host-api-network
+# Запустить ВСЁ автоматически (тестовый режим)
+bash tools/ctl.sh start-test
 
-# Запустить базовые сервисы
-docker compose -f HOST_API_SERVICE_INFRASTRUCTURE.yml up -d
+# ИЛИ запустить в продакшн режиме
+bash tools/ctl.sh start-prod
 
-# Запустить API Father
-docker compose -f HOST_API_SERVICE_FATHER_API.yml up -d
-
-# Запустить легкие API
-docker compose -f HOST_API_SERVICE_LIGHT_WEIGHT_API.yml up -d
-
-# Запустить тяжелые API
-docker compose -f HOST_API_SERVICE_HEAVY_WEIGHT_API.yml up -d
+# ИЛИ просто всё (по умолчанию)
+bash tools/ctl.sh start-all
 ```
+
+**Скрипт автоматически:**
+- ✅ Создаст все Docker сети
+- ✅ Запустит инфраструктуру (Redis, PostgreSQL, MySQL)
+- ✅ Запустит API Father (оркестратор)
+- ✅ Запустит все API сервисы (API_1-5)
+- ✅ Запустит Workers и XML Workers
+- ✅ Запустит мониторинг
 
 ### 5. Проверка
 
 ```bash
-# Проверить контейнеры
-docker ps
+# Статус всех сервисов (красивая таблица)
+bash tools/ctl.sh status
+
+# Логи всех сервисов
+bash tools/ctl.sh logs
+
+# Логи конкретного сервиса
+bash tools/ctl.sh logs api_father
+bash tools/ctl.sh logs api_2
 
 # Проверить API
 curl http://localhost:9000/internal/health
 curl http://localhost:8082/health
+```
+
+### 6. Управление
+
+```bash
+# Остановить всё
+bash tools/ctl.sh stop-all
+
+# Остановить и удалить (с volumes)
+bash tools/ctl.sh down-all
+
+# Перезапустить сервис
+bash tools/ctl.sh restart api_2
+
+# Диагностика
+bash tools/ctl.sh doctor
+
+# Применить миграции
+bash tools/ctl.sh migrate
 ```
 
 ## 🌟 Site Agent (для сайта)
