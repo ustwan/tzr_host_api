@@ -22,7 +22,6 @@ services:
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
     networks:
       - host-api-network
-      - host-api-network
     environment:
       - TZ=${TZ}
     healthcheck:

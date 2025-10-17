@@ -9,7 +9,6 @@ services:
     build: ./api_1
     networks:
       - host-api-network
-      - host-api-backend-net  # Для доступа к api_father
     restart: unless-stopped
     ports:
       - "8081:8081"

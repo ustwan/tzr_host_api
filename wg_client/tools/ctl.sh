@@ -361,8 +361,6 @@ case "$cmd" in
   *)
     usage; exit 1 ;;
 esac
-BASH
-chmod +x tools/ctl.sh
 
 # ========== Interactive Matrix Menu ==========
 matrix_type(){

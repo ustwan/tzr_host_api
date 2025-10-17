@@ -103,7 +103,6 @@ services:
       - swagger_ui_data:/data
     networks:
       - host-api-network
-      - host-api-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.swagger.rule=PathPrefix(`/swagger`)"
