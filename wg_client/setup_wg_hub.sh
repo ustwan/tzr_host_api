@@ -66,9 +66,9 @@ EOF
 # Создаем .env
 echo "✅ Создание .env..."
 
-cat > .env <<EOF
+cat > .env <<'EOF'
 # IP сервера (для клиентов WireGuard)
-WG_HOST=${SERVER_IP}
+WG_HOST=172.16.16.117
 
 # Bcrypt хеш пароля "admin" (уже в кавычках!)
 WG_PASSWORD_HASH='$2a$10$hBCoTLey1dPWk4DvWgdW/edRFhY20lKkjFdQGHA/6M2CvOFp.yP3u'
