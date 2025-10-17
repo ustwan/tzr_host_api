@@ -141,7 +141,7 @@ stack_down(){
   spinner $! "docker compose down (${title})"
 }
 
-cmd=${1:-help}; shift || true
+cmd=${1:-status}; shift || true
 
 case "$cmd" in
   help|-h|--help)
@@ -572,11 +572,10 @@ matrix_menu(){
   esac
 }
 
-if [[ ${INTERACTIVE_MENU:-1} -eq 1 && $# -eq 0 ]]; then
+if [[ ${INTERACTIVE_MENU:-0} -eq 1 && $# -eq 0 ]]; then
   matrix_menu
   exit 0
 fi
-BASH
 
 
 stacks_menu(){
