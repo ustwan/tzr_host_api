@@ -47,6 +47,7 @@ MONITORING="HOST_API_SERVICE_MONITORING.yml"
 DB_MONITORING="HOST_API_SERVICE_DB_MONITORING.yml"
 UTILITIES="HOST_API_SERVICE_UTILITIES.yml"
 SHOP_API="HOST_API_SERVICE_SHOP_API.yml"
+SITE_AGENT="HOST_API_SERVICE_SITE_AGENT.yml"
 
 DC(){ docker compose "$@"; }
 
@@ -60,6 +61,7 @@ ${BOLD}Режимы работы:${NC}
   ./tools/ctl.sh ${GREEN}start-test${NC}             — запустить тестовый режим (тестовая БД, ограниченные ресурсы)
   ./tools/ctl.sh ${GREEN}start-prod${NC}             — запустить продакшн режим (продакшн БД, полные ресурсы)
   ./tools/ctl.sh ${GREEN}start-all${NC}              — запустить все сервисы (по умолчанию)
+  ./tools/ctl.sh ${GREEN}start-with-agent${NC}       — запустить всё + Site Agent для сайта
 
 ${BOLD}Управление:${NC}
   ./tools/ctl.sh ${GREEN}stop-all${NC}               — остановить всё (без удаления volume)
@@ -74,9 +76,14 @@ ${BOLD}Диагностика:${NC}
   ./tools/ctl.sh ${GREEN}networks${NC}               — показать/создать внешние сети
   ./tools/ctl.sh ${GREEN}prune${NC}                  — очистить dangling images, кеши и неиспользуемые сети
 
+${BOLD}Site Agent (для сайта):${NC}
+  ./tools/ctl.sh ${GREEN}site-agent${NC}             — запустить Site Agent
+  ./tools/ctl.sh ${GREEN}site-agent-logs${NC}        — логи Site Agent
+  ./tools/ctl.sh ${GREEN}site-agent-restart${NC}     — перезапустить Site Agent
+
 ${BOLD}Низкоуровневые:${NC}
   ./tools/ctl.sh ${GREEN}config${NC} | ${GREEN}ps${NC} | ${GREEN}images${NC} | ${GREEN}validate${NC}
-  ./tools/ctl.sh ${GREEN}infrastructure${NC} | ${GREEN}father${NC} | ${GREEN}lightweight${NC} | ${GREEN}xml-workers${NC} | ${GREEN}heavyweight${NC} | ${GREEN}workers${NC} | ${GREEN}db${NC} | ${GREEN}monitoring${NC}
+  ./tools/ctl.sh ${GREEN}infrastructure${NC} | ${GREEN}father${NC} | ${GREEN}lightweight${NC} | ${GREEN}xml-workers${NC} | ${GREEN}heavyweight${NC} | ${GREEN}workers${NC} | ${GREEN}db${NC} | ${GREEN}monitoring${NC} | ${GREEN}site-agent${NC}
 USAGE
 }
 
@@ -186,11 +193,43 @@ case "$cmd" in
     stack_up "MONITORING"    "$MONITORING"
     ok "Все сервисы запущены (включая XML Workers для параллельной загрузки логов)" ;;
 
+  start-with-agent)
+    banner "Запуск всех сервисов + Site Agent"
+    export DB_MODE=test
+    export BATCH_SIZE=50
+    export MAX_WORKERS=4
+    need docker; ensure_networks
+    stack_up "INFRASTRUCTURE" "$INFRASTRUCTURE"
+    stack_up "DB"            "$DB_API"
+    stack_up "FATHER"        "$FATHER_API"
+    stack_up "LIGHTWEIGHT"   "$LIGHTWEIGHT_API"
+    stack_up "XML WORKERS"   "$XML_WORKERS"
+    stack_up "HEAVYWEIGHT"   "$HEAVYWEIGHT_API"
+    stack_up "WORKERS"       "$WORKERS"
+    stack_up "MONITORING"    "$MONITORING"
+    if [[ -f "$SITE_AGENT" ]]; then
+      stack_up "SITE AGENT"  "$SITE_AGENT"
+      ok "Все сервисы запущены (включая Site Agent для связи с сайтом)"
+    else
+      warn "Site Agent config не найден, пропущен"
+      ok "Все сервисы запущены (без Site Agent)"
+    fi ;;
+
   stop-all)
-    stack_down "ALL" "$INFRASTRUCTURE" "$FATHER_API" "$LIGHTWEIGHT_API" "$XML_WORKERS" "$HEAVYWEIGHT_API" "$WORKERS" "$DB_API" "$MONITORING" ;;
+    # Добавляем SITE_AGENT в остановку (если есть)
+    if [[ -f "$SITE_AGENT" ]]; then
+      stack_down "ALL" "$INFRASTRUCTURE" "$FATHER_API" "$LIGHTWEIGHT_API" "$XML_WORKERS" "$HEAVYWEIGHT_API" "$WORKERS" "$DB_API" "$MONITORING" "$SITE_AGENT"
+    else
+      stack_down "ALL" "$INFRASTRUCTURE" "$FATHER_API" "$LIGHTWEIGHT_API" "$XML_WORKERS" "$HEAVYWEIGHT_API" "$WORKERS" "$DB_API" "$MONITORING"
+    fi ;;
   down-all)
     banner "Полная остановка и очистка volume"
-    DC -f "$INFRASTRUCTURE" -f "$FATHER_API" -f "$LIGHTWEIGHT_API" -f "$XML_WORKERS" -f "$HEAVYWEIGHT_API" -f "$WORKERS" -f "$DB_API" -f "$MONITORING" -f "$UTILITIES" down -v &
+    # Добавляем SITE_AGENT в полную очистку (если есть)
+    if [[ -f "$SITE_AGENT" ]]; then
+      DC -f "$INFRASTRUCTURE" -f "$FATHER_API" -f "$LIGHTWEIGHT_API" -f "$XML_WORKERS" -f "$HEAVYWEIGHT_API" -f "$WORKERS" -f "$DB_API" -f "$MONITORING" -f "$UTILITIES" -f "$SITE_AGENT" down -v &
+    else
+      DC -f "$INFRASTRUCTURE" -f "$FATHER_API" -f "$LIGHTWEIGHT_API" -f "$XML_WORKERS" -f "$HEAVYWEIGHT_API" -f "$WORKERS" -f "$DB_API" -f "$MONITORING" -f "$UTILITIES" down -v &
+    fi
     spinner $! "compose down -v" ;;
 
   migrate)
@@ -213,7 +252,13 @@ case "$cmd" in
 
   logs)
     banner "Логи"
-    if [[ $# -gt 0 ]]; then DC -f "$INFRASTRUCTURE" -f "$FATHER_API" -f "$LIGHTWEIGHT_API" -f "$XML_WORKERS" -f "$HEAVYWEIGHT_API" -f "$WORKERS" -f "$MONITORING" logs -f "$1"; else DC -f "$INFRASTRUCTURE" -f "$FATHER_API" -f "$LIGHTWEIGHT_API" -f "$XML_WORKERS" -f "$HEAVYWEIGHT_API" -f "$WORKERS" -f "$MONITORING" logs -f; fi ;;
+    ALL_FILES=("$INFRASTRUCTURE" "$FATHER_API" "$LIGHTWEIGHT_API" "$XML_WORKERS" "$HEAVYWEIGHT_API" "$WORKERS" "$MONITORING")
+    [[ -f "$SITE_AGENT" ]] && ALL_FILES+=("$SITE_AGENT")
+    if [[ $# -gt 0 ]]; then 
+      DC "${ALL_FILES[@]/#/-f }" logs -f "$1"
+    else 
+      DC "${ALL_FILES[@]/#/-f }" logs -f
+    fi ;;
 
   restart)
     if [[ $# -lt 1 ]]; then err "Нужно указать сервис"; exit 1; fi
@@ -262,6 +307,23 @@ case "$cmd" in
     DC -f "$DB_API" up -d ;;
   monitoring)
     DC -f "$MONITORING" up -d ;;
+  
+  site-agent)
+    banner "Site Agent: запуск"
+    if [[ -f "$SITE_AGENT" ]]; then
+      DC -f "$SITE_AGENT" up -d
+    else
+      err "Site Agent config не найден: $SITE_AGENT"
+      exit 1
+    fi ;;
+  
+  site-agent-logs)
+    banner "Site Agent: логи"
+    DC -f "$SITE_AGENT" logs -f site_agent ;;
+  
+  site-agent-restart)
+    banner "Site Agent: перезапуск"
+    DC -f "$SITE_AGENT" restart site_agent ;;
 
   # API 5 - Shop Parser
   api5-up)
