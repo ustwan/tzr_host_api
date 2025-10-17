@@ -72,6 +72,12 @@ ${BOLD}Управление:${NC}
   ./tools/ctl.sh ${GREEN}restart [svc]${NC}          — перезапуск сервиса
   ./tools/ctl.sh ${GREEN}migrate${NC}                — применить миграции БД
 
+${BOLD}Обновление и пересборка:${NC}
+  ./tools/ctl.sh ${GREEN}update${NC}                 — обновить с GitHub и перезапустить ВСЁ
+  ./tools/ctl.sh ${GREEN}rebuild${NC}                — пересобрать все образы
+  ./tools/ctl.sh ${GREEN}rebuild-api${NC}            — пересобрать только API (быстро)
+  ./tools/ctl.sh ${GREEN}fresh-start${NC}            — полная переустановка (down + rebuild + up)
+
 ${BOLD}Диагностика:${NC}
   ./tools/ctl.sh ${GREEN}doctor${NC}                 — диагностика окружения
   ./tools/ctl.sh ${GREEN}networks${NC}               — показать/создать внешние сети
@@ -430,6 +436,80 @@ case "$cmd" in
   api5-status)
     banner "API 5 - Shop Parser: статус"
     DC -f "$SHOP_API" ps ;;
+
+  # Обновление и пересборка
+  update)
+    banner "Обновление проекта с GitHub и перезапуск"
+    warn "Шаг 1: Остановка сервисов..."
+    "$0" stop-all
+    
+    warn "Шаг 2: Обновление с GitHub..."
+    (cd .. && git pull origin main) &
+    spinner $! "git pull"
+    
+    warn "Шаг 3: Пересборка образов..."
+    "$0" rebuild
+    
+    warn "Шаг 4: Запуск сервисов..."
+    "$0" start-all
+    
+    ok "Проект обновлен и перезапущен!"
+    "$0" status ;;
+  
+  rebuild)
+    banner "Пересборка всех образов"
+    warn "Это может занять несколько минут..."
+    
+    DC -f "$FATHER_API" build &
+    spinner $! "build api_father"
+    
+    DC -f "$LIGHTWEIGHT_API" build &
+    spinner $! "build lightweight (api_1, api_2, api_mother)"
+    
+    DC -f "$HEAVYWEIGHT_API" build &
+    spinner $! "build heavyweight (api_4)"
+    
+    DC -f "$SHOP_API" build &
+    spinner $! "build api_5"
+    
+    DC -f "$WORKERS" build &
+    spinner $! "build workers"
+    
+    DC -f "$XML_WORKERS" build &
+    spinner $! "build xml_workers"
+    
+    ok "Все образы пересобраны!" ;;
+  
+  rebuild-api)
+    banner "Быстрая пересборка API"
+    DC -f "$FATHER_API" build api_father &
+    spinner $! "build api_father"
+    
+    DC -f "$LIGHTWEIGHT_API" build &
+    spinner $! "build api_1, api_2"
+    
+    ok "API пересобраны! Перезапустите: bash tools/ctl.sh restart api_father" ;;
+  
+  fresh-start)
+    banner "ПОЛНАЯ переустановка (down + rebuild + up)"
+    warn "⚠️  Это удалит все volumes (тестовые данные)!"
+    read -p "Продолжить? (y/N): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+      warn "Отменено"
+      exit 0
+    fi
+    
+    warn "Шаг 1: Полная остановка..."
+    "$0" down-all
+    
+    warn "Шаг 2: Пересборка образов..."
+    "$0" rebuild
+    
+    warn "Шаг 3: Запуск..."
+    "$0" start-all
+    
+    ok "Чистая установка завершена!"
+    "$0" status ;;
 
   *)
     usage; exit 1 ;;
