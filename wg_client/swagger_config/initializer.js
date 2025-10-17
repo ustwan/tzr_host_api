@@ -1,19 +1,17 @@
-// Swagger UI Initializer - правильная инициализация с URLS из env
+// Swagger UI Initializer - динамические URLs
 window.onload = function() {
-  // Парсим URLS из переменной окружения (передаётся через Docker)
-  const urlsFromEnv = window.location.search.includes('urls=') 
-    ? JSON.parse(decodeURIComponent(window.location.search.split('urls=')[1]))
-    : [];
-
+  // Определяем hostname динамически
+  const baseUrl = window.location.protocol + '//' + window.location.hostname;
+  
   // Инициализируем Swagger UI
   const ui = SwaggerUIBundle({
-    urls: urlsFromEnv.length > 0 ? urlsFromEnv : [
-      {"name":"API 1","url":"http://localhost:8081/openapi.json"},
-      {"name":"API 2","url":"http://localhost:8082/openapi.json"},
-      {"name":"API 4","url":"http://localhost:8084/openapi.json"},
-      {"name":"API 5 - Shop Parser","url":"http://localhost:8085/openapi.json"},
-      {"name":"API Father","url":"http://localhost:8080/openapi.json"},
-      {"name":"API Mother","url":"http://localhost:8083/openapi.json"}
+    urls: [
+      {"name":"API 1 - Server Status","url": baseUrl + ":8081/openapi.json"},
+      {"name":"API 2 - Registration","url": baseUrl + ":8082/openapi.json"},
+      {"name":"API 4 - Battles & Analytics","url": baseUrl + ":8084/openapi.json"},
+      {"name":"API 5 - Shop Parser","url": baseUrl + ":8085/openapi.json"},
+      {"name":"API Father - Orchestrator","url": baseUrl + ":9000/openapi.json"},
+      {"name":"API Mother - File Sync","url": baseUrl + ":8083/openapi.json"}
     ],
     dom_id: '#swagger-ui',
     deepLinking: true,
