@@ -350,14 +350,32 @@ case "$cmd" in
   # WG_HUB - VPN сервер
   wg-hub)
     banner "WG_HUB: запуск"
-    if [[ -d "../WG_HUB_" ]]; then
-      (cd ../WG_HUB_/wg-easy && docker compose up -d)
-      ok "WG_HUB запущен"
-      warn "Веб-админка: http://localhost:2019 (или ваш_IP:2019)"
-    else
-      err "WG_HUB_ не найден в корне проекта"
+    
+    # Поиск WG_HUB в разных местах
+    WG_PATH=""
+    if [[ -d "../WG_HUB_/wg-easy" ]]; then
+      WG_PATH="../WG_HUB_/wg-easy"
+    elif [[ -d "../WG_HUB_/opt/wg-hub" ]]; then
+      WG_PATH="../WG_HUB_/opt/wg-hub"
+    elif [[ -d "/opt/wg-hub" ]]; then
+      WG_PATH="/opt/wg-hub"
+    fi
+    
+    if [[ -z "$WG_PATH" ]]; then
+      err "WG_HUB не найден! Проверьте:"
+      echo "  ls -la ../ | grep WG"
+      echo "  ls -la /opt/ | grep wg"
       exit 1
-    fi ;;
+    fi
+    
+    warn "Найден WG_HUB: $WG_PATH"
+    (cd "$WG_PATH" && docker compose up -d)
+    ok "WG_HUB запущен"
+    warn "Веб-админка: http://localhost:2019 (или ваш_IP:2019)"
+    
+    # Проверка статуса
+    sleep 2
+    docker ps | grep -E "wg-easy|wg-hub" || warn "Контейнер WG не виден в docker ps" ;;
   
   wg-hub-stop)
     banner "WG_HUB: остановка"
@@ -393,11 +411,8 @@ case "$cmd" in
     export MAX_WORKERS=4
     
     # Запускаем WG_HUB сначала
-    if [[ -d "../WG_HUB_" ]]; then
-      warn "Запуск WG_HUB..."
-      (cd ../WG_HUB_/wg-easy && docker compose up -d) &
-      spinner $! "WG-Easy"
-    fi
+    warn "Попытка запуска WG_HUB..."
+    "$0" wg-hub || warn "WG_HUB не запущен (возможно не установлен)"
     
     need docker; ensure_networks
     stack_up "INFRASTRUCTURE" "$INFRASTRUCTURE"
@@ -409,8 +424,11 @@ case "$cmd" in
     stack_up "WORKERS"       "$WORKERS"
     stack_up "MONITORING"    "$MONITORING"
     
-    ok "ПОЛНЫЙ стек запущен (WG_HUB + все API сервисы)"
-    warn "WG-Easy админка: http://localhost:2019" ;;
+    ok "ПОЛНЫЙ стек запущен"
+    echo
+    echo -e "${CYAN}Проверьте WG_HUB:${NC}"
+    docker ps | grep -E "wg-easy|wg-hub" || warn "WG_HUB не запущен"
+    echo ;;
 
   # API 5 - Shop Parser
   api5-up)
