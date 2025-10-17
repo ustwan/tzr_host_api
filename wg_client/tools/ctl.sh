@@ -436,6 +436,22 @@ case "$cmd" in
 esac
 
 # ========== Interactive Matrix Menu ==========
+matrix_rain(){
+  local seconds="${1:-1.5}"
+  local end=$(python3 -c "import time; print(time.time()+$seconds)" 2>/dev/null || echo 0)
+  if [[ "$end" == "0" ]]; then return; fi
+  local cols=$(tput cols 2>/dev/null || echo 80)
+  while python3 -c "import time; print('OK' if time.time() < $end else '')" 2>/dev/null | grep -q .; do
+    line=""
+    for i in $(seq 1 $cols); do
+      line+="$(printf '\033[32m' && printf %s "$(printf '%x' $RANDOM | head -c1)" && printf '\033[0m')"
+    done
+    printf "%s\r" "$line"
+    sleep 0.03
+  done
+  echo
+}
+
 matrix_type(){
   local text="$1"; shift || true
   local delay="${1:-0.02}"
@@ -529,20 +545,4 @@ stacks_menu(){
     e|q|exit) : ;;
     *) echo -e "${YELLOW}неизвестное действие${NC}" ;;
   esac
-}
-
-
-matrix_rain(){
-  local seconds="${1:-1.5}"
-  local end=$(python3 -c "import time; print(time.time()+$seconds)")
-  local cols=$(tput cols 2>/dev/null || echo 80)
-  while python3 -c "import time; print('OK' if time.time() < $end else '')" 2>/dev/null | grep -q .; do
-    line=""
-    for i in $(seq 1 $cols); do
-      line+="$(printf '\\033[32m' && printf %s "$(printf '%x' $RANDOM | head -c1)" && printf '\\033[0m')"
-    done
-    printf "%s\r" "$line"
-    sleep 0.03
-  done
-  echo
 }
