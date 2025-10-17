@@ -12,7 +12,7 @@ services:
       dockerfile: ./api_4/Dockerfile
     restart: unless-stopped
     ports:
-      - "8084:8084"
+      - "0.0.0.0:8084:8084"  # Доступно из VPN
     networks:
       - host-api-network
     environment:

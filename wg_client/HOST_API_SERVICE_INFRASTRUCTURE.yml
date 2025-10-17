@@ -16,7 +16,7 @@ services:
       - "--entrypoints.vpn.address=:1010"
       - "--log.level=${TRAEFIK_LOG_LEVEL}"
     ports:
-      - "1010:1010"
+      - "0.0.0.0:1010:1010"  # Доступно из VPN
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro

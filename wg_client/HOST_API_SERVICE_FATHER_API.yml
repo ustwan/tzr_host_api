@@ -6,7 +6,7 @@ services:
     depends_on: []
     restart: unless-stopped
     ports:
-      - "8080:9000"
+      - "0.0.0.0:9000:9000"  # Доступно из VPN (на порту 9000)
     networks:
       - host-api-network
     environment:

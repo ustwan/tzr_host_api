@@ -11,7 +11,7 @@ services:
       - host-api-network
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "0.0.0.0:8081:8081"  # Доступно из VPN
     environment:
       - TZ=${TZ}
       - ENVIRONMENT=${ENVIRONMENT:-local}
@@ -31,7 +31,7 @@ services:
       - host-api-network
     restart: unless-stopped
     ports:
-      - "8082:8082"
+      - "0.0.0.0:8082:8082"  # Доступно из VPN
     environment:
       - TZ=${TZ}
       - ENVIRONMENT=${ENVIRONMENT:-local}
@@ -52,7 +52,7 @@ services:
       - host-api-network
     restart: unless-stopped
     ports:
-      - "8083:8083"
+      - "0.0.0.0:8083:8083"  # Доступно из VPN
     environment:
       - TZ=${TZ}
       - ENVIRONMENT=${ENVIRONMENT:-local}
