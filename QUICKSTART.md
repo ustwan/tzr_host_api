@@ -28,6 +28,9 @@ cd tzr_host_api/wg_client
 ### 3. Конфигурация
 
 ```bash
+# Перейти в рабочую директорию
+cd wg_client
+
 # Скопировать примеры
 cp env.example .env
 
