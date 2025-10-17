@@ -8,7 +8,7 @@ services:
     container_name: portainer
     restart: unless-stopped
     ports:
-      - "9100:9000"
+      - "0.0.0.0:9100:9000"  # Доступно из VPN
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
@@ -22,7 +22,7 @@ services:
     container_name: netdata
     restart: unless-stopped
     ports:
-      - "9101:19999"
+      - "0.0.0.0:9101:19999"  # Доступно из VPN
     volumes:
       - netdata_data:/var/lib/netdata
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -47,7 +47,7 @@ services:
     container_name: dozzle
     restart: unless-stopped
     ports:
-      - "9102:8080"
+      - "0.0.0.0:9102:8080"  # Доступно из VPN
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -96,7 +96,7 @@ services:
     container_name: swagger-ui
     restart: unless-stopped
     ports:
-      - "9107:8080"
+      - "0.0.0.0:9107:8080"  # Доступно из VPN
     volumes:
       - ./swagger_config/swagger-config.json:/usr/share/nginx/html/swagger-config.json:ro
       - ./swagger_config/initializer.js:/usr/share/nginx/html/swagger-initializer.js:ro
