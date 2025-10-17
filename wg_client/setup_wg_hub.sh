@@ -42,7 +42,7 @@ services:
     
     environment:
       - WG_HOST=${WG_HOST}
-      - PASSWORD=${WG_PASSWORD:-admin}
+      - PASSWORD_HASH=${WG_PASSWORD_HASH}
       - WG_PORT=51820
       - WG_DEFAULT_ADDRESS=10.8.0.x
       - WG_DEFAULT_DNS=1.1.1.1,8.8.8.8
@@ -65,9 +65,18 @@ EOF
 
 # Создаем .env
 echo "✅ Создание .env..."
+
+# Генерация bcrypt хеша для пароля "admin"
+# Хеш для пароля "admin" (bcrypt, rounds=10)
+DEFAULT_HASH='$2a$10$hBCoTLey1dPWk4DvWgdW/edRFhY20lKkjFdQGHA/6M2CvOFp.yP3u'
+
 cat > .env <<EOF
+# IP сервера (для клиентов WireGuard)
 WG_HOST=${SERVER_IP}
-WG_PASSWORD=change_me_secure_password
+
+# Bcrypt хеш пароля (по умолчанию: "admin")
+# Для генерации своего: docker run -it ghcr.io/wg-easy/wg-easy wgpw 'ваш_пароль'
+WG_PASSWORD_HASH=${DEFAULT_HASH}
 EOF
 
 echo
@@ -94,8 +103,14 @@ echo
 echo "🌐 Веб-админка VPN:"
 echo "  http://${SERVER_IP}:2019"
 echo
-echo "🔑 Пароль по умолчанию: change_me_secure_password"
-echo "   Измените в файле: WG_HUB_/wg-easy/.env"
+echo "🔑 Пароль по умолчанию: admin"
+echo
+echo "⚠️  Для изменения пароля:"
+echo "   1. Сгенерировать bcrypt хеш:"
+echo "      docker run -it ghcr.io/wg-easy/wg-easy wgpw 'ваш_новый_пароль'"
+echo "   2. Вставить хеш в файл: WG_HUB_/wg-easy/.env"
+echo "      WG_PASSWORD_HASH='\$2a\$10\$...'"
+echo "   3. Перезапустить: docker restart wg-easy"
 echo
 echo "📋 Команды управления:"
 echo "  cd wg_client"
